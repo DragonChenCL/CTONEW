@@ -6,11 +6,18 @@
       <a-descriptions-item label="无淘汰轮数">{{ store.workflow.roundsWithoutElimination }}</a-descriptions-item>
     </a-descriptions>
 
+    <a-descriptions size="small" bordered :column="1" style="margin-bottom: 12px;">
+      <a-descriptions-item label="患者姓名">{{ store.patientCase.name || '—' }}</a-descriptions-item>
+      <a-descriptions-item label="年龄">{{ store.patientCase.age ?? '—' }}</a-descriptions-item>
+      <a-descriptions-item label="既往疾病">{{ store.patientCase.pastHistory || '—' }}</a-descriptions-item>
+      <a-descriptions-item label="本次问题">{{ store.patientCase.currentProblem || '—' }}</a-descriptions-item>
+    </a-descriptions>
+
     <DoctorList :doctors="store.doctors" />
 
     <template v-if="store.workflow.phase === 'voting'">
       <div style="margin-top: 16px;">
-        <VoteTally :doctors="store.doctors" />
+        <VoteTally :doctors="store.doctors" :votes="store.lastRoundVotes" />
       </div>
     </template>
 

@@ -63,7 +63,8 @@ export const useConsultStore = defineStore('consult', {
       turnQueue: [],
       paused: false
     },
-    discussionHistory: []
+    discussionHistory: [],
+    lastRoundVotes: []
   }),
   getters: {
     activeDoctors(state) {
@@ -82,6 +83,12 @@ export const useConsultStore = defineStore('consult', {
     },
     setPatientCase(caseInfo) {
       this.patientCase = { ...this.patientCase, ...caseInfo }
+    },
+    addPatientMessage(text) {
+      const content = String(text || '').trim()
+      if (!content) return
+      const name = this.patientCase?.name ? `患者（${this.patientCase.name}）` : '患者'
+      this.discussionHistory.push({ type: 'patient', author: name, content })
     },
     resetVotes() {
       this.doctors = this.doctors.map((d) => ({ ...d, votes: 0 }))
@@ -125,7 +132,7 @@ export const useConsultStore = defineStore('consult', {
         const systemPrompt = doctor.customPrompt || this.settings.globalSystemPrompt
         const fullPrompt = buildFullPrompt(systemPrompt, this.patientCase, this.discussionHistory)
         try {
-          const providerHistory = formatHistoryForProvider(this.discussionHistory)
+          const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase)
           const response = await callAI(doctor, fullPrompt, providerHistory)
 
           // 移除“正在输入...”提示
@@ -173,11 +180,31 @@ export const useConsultStore = defineStore('consult', {
     async autoVoteAndProceed() {
       // 医生之间自动投票（不允许投自己）
       this.resetVotes()
+      this.lastRoundVotes = []
       const active = this.doctors.filter((d) => d.status === 'active').map((d) => d.id)
       for (const voter of active) {
         const choices = active.filter((id) => id !== voter)
         if (!choices.length) continue
         const pick = choices[Math.floor(Math.random() * choices.length)]
+        const voterDoc = this.doctors.find((d) => d.id === voter)
+        const targetDoc = this.doctors.find((d) => d.id === pick)
+        const reason = `综合上述讨论，我认为 ${targetDoc?.name || ''} 的观点相对薄弱，投其一票。`
+        this.lastRoundVotes.push({
+          round: this.workflow.currentRound,
+          voterId: voterDoc?.id,
+          voterName: voterDoc?.name,
+          targetId: targetDoc?.id,
+          targetName: targetDoc?.name,
+          reason
+        })
+        this.discussionHistory.push({
+          type: 'vote_detail',
+          voterId: voterDoc?.id,
+          voterName: voterDoc?.name,
+          targetId: targetDoc?.id,
+          targetName: targetDoc?.name,
+          reason
+        })
         this.voteForDoctor(pick)
         await delay(50)
       }
