@@ -4,8 +4,14 @@ function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms))
 }
 
+function normalizeBaseUrl(baseUrl, fallback) {
+  const url = (baseUrl || fallback || '').trim()
+  if (!url) return ''
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
+
 export async function callAI(doctor, fullPrompt, historyForProvider) {
-  const { provider, model, apiKey } = doctor
+  const { provider, model, apiKey, baseUrl } = doctor
 
   if (!apiKey) {
     await sleep(600)
@@ -14,17 +20,17 @@ export async function callAI(doctor, fullPrompt, historyForProvider) {
 
   switch (provider) {
     case 'openai':
-      return callOpenAI({ apiKey, model, fullPrompt, history: historyForProvider })
+      return callOpenAI({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
     case 'anthropic':
-      return callAnthropic({ apiKey, model, fullPrompt, history: historyForProvider })
+      return callAnthropic({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
     case 'gemini':
-      return callGemini({ apiKey, model, fullPrompt, history: historyForProvider })
+      return callGemini({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
     default:
       throw new Error('Unsupported AI provider')
   }
 }
 
-async function callOpenAI({ apiKey, model, fullPrompt, history }) {
+async function callOpenAI({ apiKey, model, fullPrompt, history, baseUrl }) {
   const messages = [
     { role: 'system', content: fullPrompt.system },
     ...history
@@ -32,7 +38,8 @@ async function callOpenAI({ apiKey, model, fullPrompt, history }) {
       .map((m) => ({ role: m.role, content: m.content })),
     { role: 'user', content: fullPrompt.user }
   ]
-  const url = 'https://api.openai.com/v1/chat/completions'
+  const root = normalizeBaseUrl(baseUrl, 'https://api.openai.com')
+  const url = `${root}/v1/chat/completions`
   const res = await axios.post(
     url,
     { model, messages, temperature: 0.7 },
@@ -46,8 +53,9 @@ async function callOpenAI({ apiKey, model, fullPrompt, history }) {
   return res.data.choices?.[0]?.message?.content?.trim() || ''
 }
 
-async function callAnthropic({ apiKey, model, fullPrompt, history }) {
-  const url = 'https://api.anthropic.com/v1/messages'
+async function callAnthropic({ apiKey, model, fullPrompt, history, baseUrl }) {
+  const root = normalizeBaseUrl(baseUrl, 'https://api.anthropic.com')
+  const url = `${root}/v1/messages`
   const messages = [
     ...history
       .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -73,10 +81,11 @@ async function callAnthropic({ apiKey, model, fullPrompt, history }) {
   return res.data?.content?.[0]?.text?.trim() || ''
 }
 
-async function callGemini({ apiKey, model, fullPrompt, history }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`
+async function callGemini({ apiKey, model, fullPrompt, history, baseUrl }) {
+  const root = normalizeBaseUrl(baseUrl, 'https://generativelanguage.googleapis.com')
+  const isGoogle = /generativelanguage\.googleapis\.com$/.test(root)
+  const endpoint = `${root}/v1beta/models/${encodeURIComponent(model)}:generateContent`
+  const url = isGoogle ? `${endpoint}?key=${encodeURIComponent(apiKey)}` : endpoint
 
   const contents = [
     ...history
@@ -85,13 +94,16 @@ async function callGemini({ apiKey, model, fullPrompt, history }) {
     { role: 'user', parts: [{ text: fullPrompt.user }] }
   ]
 
+  const headers = { 'Content-Type': 'application/json' }
+  if (!isGoogle) headers['x-goog-api-key'] = apiKey
+
   const res = await axios.post(
     url,
     {
       systemInstruction: { role: 'system', parts: [{ text: fullPrompt.system }] },
       contents
     },
-    { headers: { 'Content-Type': 'application/json' } }
+    { headers }
   )
 
   return (
