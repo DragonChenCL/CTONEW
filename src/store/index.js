@@ -15,41 +15,7 @@ export const useConsultStore = defineStore('consult', {
       turnOrder: 'random',
       maxRoundsWithoutElimination: 3
     },
-    doctors: [
-      {
-        id: 'doc-1',
-        name: 'Dr. GPT-4',
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        apiKey: '',
-        baseUrl: '',
-        customPrompt: '',
-        status: 'active',
-        votes: 0
-      },
-      {
-        id: 'doc-2',
-        name: 'Dr. Claude 3',
-        provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        apiKey: '',
-        baseUrl: '',
-        customPrompt: '',
-        status: 'active',
-        votes: 0
-      },
-      {
-        id: 'doc-3',
-        name: 'Dr. Gemini',
-        provider: 'gemini',
-        model: 'gemini-1.5-flash',
-        apiKey: '',
-        baseUrl: '',
-        customPrompt: '',
-        status: 'active',
-        votes: 0
-      }
-    ],
+    doctors: [],
     patientCase: {
       name: '',
       age: null,
@@ -98,6 +64,9 @@ export const useConsultStore = defineStore('consult', {
     startConsultation() {
       if (!this.patientCase.name || !this.patientCase.currentProblem) {
         throw new Error('请填写患者名称和本次问题')
+      }
+      if (!this.doctors || this.doctors.length === 0) {
+        throw new Error('请为当前问诊添加至少一位医生')
       }
       // 新的问诊开始时，所有医生恢复为在席状态，清空票数，并取消暂停
       this.doctors = this.doctors.map((d) => ({ ...d, status: 'active', votes: 0 }))

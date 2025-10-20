@@ -54,13 +54,24 @@
                 <a-form-item label="自定义提示词（可选）">
                   <a-textarea v-model:value="element.customPrompt" rows="2" />
                 </a-form-item>
-                <a-form-item label="状态">
-                  <a-segmented v-model:value="element.status" :options="statusOptions" />
-                </a-form-item>
               </a-card>
             </template>
           </draggable>
           <a-button type="dashed" block @click="addDoctor">+ 添加医生</a-button>
+        </a-space>
+      </a-tab-pane>
+      <a-tab-pane key="session" tab="问诊医生">
+        <a-space direction="vertical" style="width: 100%">
+          <a-alert type="info" show-icon message="当前问诊医生" description="从全局配置中选择医生加入本次问诊。“在席/淘汰”状态仅属于当前问诊。" />
+          <div style="display:flex; gap: 8px;">
+            <a-select v-model:value="selectedToAdd" :options="globalDoctorOptions" style="flex:1;" placeholder="选择要添加的医生" />
+            <a-button type="primary" @click="addToConsult">添加</a-button>
+            <a-button @click="addAllToConsult">添加全部</a-button>
+            <a-popconfirm title="确认清空当前问诊医生？" @confirm="clearConsultDoctors">
+              <a-button danger>清空</a-button>
+            </a-popconfirm>
+          </div>
+          <a-list :data-source="consultDoctors" :renderItem="renderConsultDoctor" />
         </a-space>
       </a-tab-pane>
       <a-tab-pane key="global" tab="全局设置">
@@ -87,13 +98,15 @@
 </template>
 
 <script setup>
-import { ref, watch, h, resolveComponent } from 'vue'
+import { ref, watch, h, resolveComponent, computed } from 'vue'
 import draggable from 'vuedraggable'
 import { useConsultStore } from '../store'
+import { useGlobalStore } from '../store/global'
 import { message } from 'ant-design-vue'
 import { listModels } from '../api/models'
 
 const store = useConsultStore()
+const global = useGlobalStore()
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['update:open'])
@@ -110,12 +123,12 @@ const providerOptions = [
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'Gemini', value: 'gemini' }
 ]
-const statusOptions = [
-  { label: '在席', value: 'active' },
-  { label: '淘汰', value: 'eliminated' }
-]
 
-const localDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
+// 全局医生配置（不含在席/淘汰状态）
+const localDoctors = ref(JSON.parse(JSON.stringify(global.doctors)))
+// 当前问诊医生（含在席/淘汰状态与票数）
+const consultDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
+
 const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
 const modelOptions = ref({})
 const loadingModel = ref({})
@@ -124,7 +137,8 @@ watch(
   () => props.open,
   (v) => {
     if (v) {
-      localDoctors.value = JSON.parse(JSON.stringify(store.doctors))
+      localDoctors.value = JSON.parse(JSON.stringify(global.doctors))
+      consultDoctors.value = JSON.parse(JSON.stringify(store.doctors))
       localSettings.value = JSON.parse(JSON.stringify(store.settings))
     }
   }
@@ -132,7 +146,7 @@ watch(
 
 function addDoctor() {
   const id = `doc-${Date.now()}`
-  localDoctors.value.push({ id, name: '', provider: 'openai', model: 'gpt-4o-mini', apiKey: '', baseUrl: '', customPrompt: '', status: 'active', votes: 0 })
+  localDoctors.value.push({ id, name: '', provider: 'openai', model: 'gpt-4o-mini', apiKey: '', baseUrl: '', customPrompt: '' })
 }
 
 function removeDoctor(idx) {
@@ -172,13 +186,63 @@ function extraActions(idx) {
   )
 }
 
+// —— 问诊医生（从全局添加） ——
+const selectedToAdd = ref(null)
+const globalDoctorOptions = computed(() => {
+  const included = new Set((consultDoctors.value || []).map((d) => d.id))
+  return (global.doctors || [])
+    .filter((d) => !included.has(d.id))
+    .map((d) => ({ label: `${d.name}（${d.provider}•${d.model}）`, value: d.id }))
+})
+
+function addToConsult() {
+  const targetId = selectedToAdd.value
+  if (!targetId) return
+  const d = (global.doctors || []).find((x) => x.id === targetId)
+  if (!d) return
+  consultDoctors.value.push({ ...d, status: 'active', votes: 0 })
+  selectedToAdd.value = null
+}
+
+function addAllToConsult() {
+  const included = new Set((consultDoctors.value || []).map((d) => d.id))
+  const toAdd = (global.doctors || []).filter((d) => !included.has(d.id))
+  consultDoctors.value = consultDoctors.value.concat(toAdd.map((d) => ({ ...d, status: 'active', votes: 0 })))
+}
+
+function clearConsultDoctors() {
+  consultDoctors.value = []
+}
+
+function removeConsultDoctor(id) {
+  consultDoctors.value = consultDoctors.value.filter((d) => d.id !== id)
+}
+
+function renderConsultDoctor({ item }) {
+  const AButton = resolveComponent('a-button')
+  return h(
+    'div',
+    { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' } },
+    [
+      h('div', [
+        h('div', { style: { fontWeight: '600' } }, item.name),
+        h('div', { style: { color: '#8c8c8c', fontSize: '12px' } }, `${item.provider} • ${item.model}`)
+      ]),
+      h(
+        AButton,
+        { type: 'link', danger: true, onClick: () => removeConsultDoctor(item.id) },
+        { default: () => '移除' }
+      )
+    ]
+  )
+}
+
 function onSave() {
-  if (!localDoctors.value.length) {
-    message.error('请至少添加一位医生')
-    return
-  }
-  store.setDoctors(localDoctors.value)
+  // 保存全局配置的医生
+  global.setDoctors(localDoctors.value)
+  // 保存当前问诊设置与所选医生
   store.setSettings(localSettings.value)
+  store.setDoctors(consultDoctors.value)
   message.success('已保存设置')
   open.value = false
 }
