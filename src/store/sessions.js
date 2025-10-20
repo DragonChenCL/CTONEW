@@ -97,7 +97,7 @@ export const useSessionsStore = defineStore('sessions', {
         settings: undefined,
         doctors: undefined,
         patientCase: { name: '', age: null, pastHistory: '', currentProblem: '' },
-        workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [] },
+        workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
         discussionHistory: []
       })
       return id
@@ -139,7 +139,7 @@ export const useSessionsStore = defineStore('sessions', {
         consult.settings = consult.settings // keep defaults
         consult.doctors = consult.doctors // keep defaults
         consult.setPatientCase({ name: '', age: null, pastHistory: '', currentProblem: '' })
-        consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [] }
+        consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
       }
     },

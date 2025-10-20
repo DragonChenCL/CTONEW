@@ -47,8 +47,9 @@ const phaseText = computed(() => {
 })
 
 function resetAll() {
-  store.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [] }
-  store.resetVotes()
+  // 重置流程并恢复所有医生为在席
+  store.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
+  store.doctors = store.doctors.map((d) => ({ ...d, status: 'active', votes: 0 }))
   store.discussionHistory = []
 }
 </script>

@@ -41,6 +41,17 @@ watch(
   }
 )
 
+// 打字机模式下，内容长度变化也应滚动到底部
+watch(
+  () => props.history.map((i) => (i && i.type === 'doctor' ? (i.content || '').length : 0)).join(','),
+  async () => {
+    await nextTick()
+    if (containerRef.value) {
+      containerRef.value.scrollTop = containerRef.value.scrollHeight
+    }
+  }
+)
+
 function renderMarkdown(text) {
   try {
     return marked.parse(text || '')
