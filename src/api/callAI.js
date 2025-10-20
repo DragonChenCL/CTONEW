@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { wrapUrlForDev } from './http'
 
 function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms))
@@ -39,7 +40,7 @@ async function callOpenAI({ apiKey, model, fullPrompt, history, baseUrl }) {
     { role: 'user', content: fullPrompt.user }
   ]
   const root = normalizeBaseUrl(baseUrl, 'https://api.openai.com')
-  const url = `${root}/v1/chat/completions`
+  const url = wrapUrlForDev(`${root}/v1/chat/completions`)
   const res = await axios.post(
     url,
     { model, messages, temperature: 0.7 },
@@ -55,7 +56,7 @@ async function callOpenAI({ apiKey, model, fullPrompt, history, baseUrl }) {
 
 async function callAnthropic({ apiKey, model, fullPrompt, history, baseUrl }) {
   const root = normalizeBaseUrl(baseUrl, 'https://api.anthropic.com')
-  const url = `${root}/v1/messages`
+  const url = wrapUrlForDev(`${root}/v1/messages`)
   const messages = [
     ...history
       .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -85,7 +86,7 @@ async function callGemini({ apiKey, model, fullPrompt, history, baseUrl }) {
   const root = normalizeBaseUrl(baseUrl, 'https://generativelanguage.googleapis.com')
   const isGoogle = /generativelanguage\.googleapis\.com$/.test(root)
   const endpoint = `${root}/v1beta/models/${encodeURIComponent(model)}:generateContent`
-  const url = isGoogle ? `${endpoint}?key=${encodeURIComponent(apiKey)}` : endpoint
+  const url = wrapUrlForDev(isGoogle ? `${endpoint}?key=${encodeURIComponent(apiKey)}` : endpoint)
 
   const contents = [
     ...history

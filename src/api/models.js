@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { wrapUrlForDev } from './http'
 
 function normalizeBaseUrl(baseUrl, fallback) {
   const url = (baseUrl || fallback || '').trim()
@@ -25,7 +26,7 @@ export async function listModels(provider, apiKey, baseUrl) {
 
 export async function listOpenAIModels(apiKey, baseUrl) {
   const root = normalizeBaseUrl(baseUrl, 'https://api.openai.com')
-  const url = `${root}/v1/models`
+  const url = wrapUrlForDev(`${root}/v1/models`)
   const res = await axios.get(url, {
     headers: { Authorization: `Bearer ${apiKey}` }
   })
@@ -37,7 +38,7 @@ export async function listOpenAIModels(apiKey, baseUrl) {
 
 export async function listAnthropicModels(apiKey, baseUrl) {
   const root = normalizeBaseUrl(baseUrl, 'https://api.anthropic.com')
-  const url = `${root}/v1/models`
+  const url = wrapUrlForDev(`${root}/v1/models`)
   const res = await axios.get(url, {
     headers: {
       'x-api-key': apiKey,
@@ -59,7 +60,7 @@ export async function listGeminiModels(apiKey, baseUrl) {
   let models = []
   for (const p of tryPaths) {
     try {
-      const url = isGoogle ? `${p}?key=${encodeURIComponent(apiKey)}` : p
+      const url = wrapUrlForDev(isGoogle ? `${p}?key=${encodeURIComponent(apiKey)}` : p)
       const res = await axios.get(url, { headers: isGoogle ? {} : { 'x-goog-api-key': apiKey } })
       const arr = res.data?.models || []
       models = arr.map((m) => ({ id: (m.name || '').replace(/^models\//, ''), displayName: m.displayName }))
