@@ -36,7 +36,7 @@
                     </a-form-item>
                   </a-col>
                   <a-col :span="12">
-                    <a-form-item label="从站点选择模型">
+                    <a-form-item label="选择模型">
                       <div style="display:flex; gap:8px;">
                         <a-select
                           style="flex:1;"
