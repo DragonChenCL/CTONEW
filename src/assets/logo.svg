@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">AI 医疗会诊面板 - 标志</title>
+  <desc id="desc">由渐变圆环与中心医疗十字构成的极简 SVG 徽标，象征智能与医疗的结合。</desc>
+  <defs>
+    <linearGradient id="g-ring" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#60a5fa"/>
+    </linearGradient>
+    <linearGradient id="g-cross" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Outer gradient ring -->
+  <circle cx="64" cy="64" r="52" fill="none" stroke="url(#g-ring)" stroke-width="10"/>
+
+  <!-- Central medical cross -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="44" width="8" height="40" rx="4" fill="url(#g-cross)"/>
+    <rect x="44" y="60" width="40" height="8" rx="4" fill="url(#g-cross)"/>
+  </g>
+
+  <!-- Small accent dot -->
+  <circle cx="92" cy="36" r="3" fill="#22d3ee" opacity="0.9"/>
+</svg>
