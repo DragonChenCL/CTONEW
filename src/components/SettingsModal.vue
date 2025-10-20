@@ -19,13 +19,35 @@
                     </a-form-item>
                   </a-col>
                   <a-col :span="6">
-                    <a-form-item label="模型名称">
-                      <a-input v-model:value="element.model" placeholder="gpt-4o-mini / claude-3-haiku-20240307 / gemini-1.5-flash" />
+                    <a-form-item label="API Key">
+                      <a-input-password v-model:value="element.apiKey" placeholder="sk-..." />
                     </a-form-item>
                   </a-col>
                   <a-col :span="6">
-                    <a-form-item label="API Key">
-                      <a-input-password v-model:value="element.apiKey" placeholder="sk-..." />
+                    <a-form-item label="自定义 Base URL">
+                      <a-input v-model:value="element.baseUrl" placeholder="留空使用默认" />
+                    </a-form-item>
+                  </a-col>
+                </a-row>
+                <a-row :gutter="8">
+                  <a-col :span="12">
+                    <a-form-item label="模型名称（可手动输入）">
+                      <a-input v-model:value="element.model" placeholder="gpt-4o-mini / claude-3-haiku-20240307 / gemini-1.5-flash" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="12">
+                    <a-form-item label="从站点选择模型">
+                      <div style="display:flex; gap:8px;">
+                        <a-select
+                          style="flex:1;"
+                          v-model:value="element.model"
+                          :options="modelOptions[element.id] || []"
+                          show-search
+                          :loading="loadingModel[element.id]"
+                          placeholder="点击右侧按钮加载模型列表"
+                        />
+                        <a-button :loading="loadingModel[element.id]" @click="() => loadModels(element)">加载模型</a-button>
+                      </div>
                     </a-form-item>
                   </a-col>
                 </a-row>
@@ -66,6 +88,7 @@ import { ref, watch, h, resolveComponent } from 'vue'
 import draggable from 'vuedraggable'
 import { useConsultStore } from '../store'
 import { message } from 'ant-design-vue'
+import { listModels } from '../api/models'
 
 const store = useConsultStore()
 
@@ -91,6 +114,8 @@ const statusOptions = [
 
 const localDoctors = ref(structuredClone(store.doctors))
 const localSettings = ref(structuredClone(store.settings))
+const modelOptions = ref({})
+const loadingModel = ref({})
 
 watch(
   () => props.open,
@@ -104,11 +129,28 @@ watch(
 
 function addDoctor() {
   const id = `doc-${Date.now()}`
-  localDoctors.value.push({ id, name: '', provider: 'openai', model: 'gpt-4o-mini', apiKey: '', customPrompt: '', status: 'active', votes: 0 })
+  localDoctors.value.push({ id, name: '', provider: 'openai', model: 'gpt-4o-mini', apiKey: '', baseUrl: '', customPrompt: '', status: 'active', votes: 0 })
 }
 
 function removeDoctor(idx) {
   localDoctors.value.splice(idx, 1)
+}
+
+async function loadModels(element) {
+  const id = element.id
+  loadingModel.value = { ...loadingModel.value, [id]: true }
+  try {
+    const options = await listModels(element.provider, element.apiKey, element.baseUrl)
+    modelOptions.value = { ...modelOptions.value, [id]: options }
+    if (!options.find((o) => o.value === element.model) && options.length) {
+      // keep current value; do not override automatically
+    }
+    message.success('模型列表已加载')
+  } catch (e) {
+    message.error(`加载模型失败：${e?.message || e}`)
+  } finally {
+    loadingModel.value = { ...loadingModel.value, [id]: false }
+  }
 }
 
 function extraActions(idx) {

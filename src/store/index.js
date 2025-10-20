@@ -17,6 +17,7 @@ export const useConsultStore = defineStore('consult', {
         provider: 'openai',
         model: 'gpt-4o-mini',
         apiKey: '',
+        baseUrl: '',
         customPrompt: '',
         status: 'active',
         votes: 0
@@ -27,6 +28,7 @@ export const useConsultStore = defineStore('consult', {
         provider: 'anthropic',
         model: 'claude-3-haiku-20240307',
         apiKey: '',
+        baseUrl: '',
         customPrompt: '',
         status: 'active',
         votes: 0
@@ -37,6 +39,7 @@ export const useConsultStore = defineStore('consult', {
         provider: 'gemini',
         model: 'gemini-1.5-flash',
         apiKey: '',
+        baseUrl: '',
         customPrompt: '',
         status: 'active',
         votes: 0
