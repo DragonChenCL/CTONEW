@@ -39,6 +39,7 @@ function devProxyPlugin() {
           res.statusCode = resp.status
           resp.headers.forEach((v, k) => {
             if (k.toLowerCase() === 'content-length') return
+            if (k.toLowerCase() === 'content-encoding') return
             res.setHeader(k, v)
           })
           const arrayBuffer = await resp.arrayBuffer()
