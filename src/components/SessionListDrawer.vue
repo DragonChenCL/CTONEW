@@ -1,5 +1,5 @@
 <template>
-  <a-drawer v-model:open="open" title="问诊列表" width="720">
+  <a-drawer v-model:open="open" title="问诊列表" width="840">
     <div style="margin-bottom: 12px; display:flex; gap:8px;">
       <a-button type="primary" @click="onCreate">新建问诊</a-button>
       <a-button type="dashed" @click="saveNow">保存当前</a-button>
@@ -77,29 +77,63 @@ const columns = [
     title: '名称',
     dataIndex: 'name',
     key: 'name',
-    customRender: ({ record }) => record.name + (record.current ? '（当前）' : '')
+    ellipsis: true,
+    customRender: ({ record }) => {
+      const text = record.name + (record.current ? '（当前）' : '')
+      return h(
+        'a-tooltip',
+        { placement: 'topLeft', title: text },
+        {
+          default: () =>
+            h(
+              'span',
+              {
+                style: {
+                  display: 'inline-block',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }
+              },
+              { default: () => text }
+            )
+        }
+      )
+    }
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
-    width: 120,
+    width: 100,
     customRender: ({ text }) => {
       const colorMap = { '配置/准备': 'blue', '讨论中': 'green', '投票中': 'orange', '已结束': 'default' }
       const color = colorMap[text] || 'default'
       return h('a-tag', { color }, { default: () => text })
     }
   },
-  { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt', width: 200 },
+  {
+    title: '更新时间',
+    dataIndex: 'updatedAt',
+    key: 'updatedAt',
+    width: 170,
+    customRender: ({ record }) => {
+      const d = new Date(record.updatedAt)
+      if (isNaN(d.getTime())) return record.updatedAt
+      const pad = (n) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    }
+  },
   {
     title: '操作',
     key: 'actions',
-    width: 300,
+    width: 280,
     customRender: ({ record }) => {
       const isCurrent = !!record.current
       return h(
         'div',
-        { style: { display: 'flex', gap: '8px' } },
+        { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
         [
           h(
             'a-button',
