@@ -15,7 +15,7 @@
                   </a-col>
                   <a-col :span="6">
                     <a-form-item label="供应商">
-                      <a-select v-model:value="element.provider" :options="providerOptions" />
+                      <a-select v-model:value="element.provider" style="width: 200px" :options="providerOptions" />
                     </a-form-item>
                   </a-col>
                   <a-col :span="6">
