@@ -17,7 +17,7 @@
         <a-input-search
           v-model:value="input"
           placeholder="我想补充一些情况，按回车发送..."
-          :enter-button="true"
+          enter-button="发送"
           :disabled="!canInput"
           @search="onSend"
         />

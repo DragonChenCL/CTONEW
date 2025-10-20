@@ -1,5 +1,5 @@
 <template>
-  <a-drawer v-model:open="open" title="问诊列表" width="840">
+  <a-drawer v-model:open="open" title="问诊列表" width="940">
     <div style="margin-bottom: 12px; display:flex; gap:8px;">
       <a-button type="primary" @click="onCreate">新建问诊</a-button>
       <a-button type="dashed" @click="saveNow">保存当前</a-button>
@@ -129,7 +129,7 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    width: 280,
+    width: 350,
     customRender: ({ record }) => {
       const isCurrent = !!record.current
       return h(
