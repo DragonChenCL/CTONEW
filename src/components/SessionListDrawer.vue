@@ -13,6 +13,7 @@
 
 <script setup>
 import { ref, computed, h, watch } from 'vue'
+import { Button, Popconfirm, Tag, Tooltip } from 'ant-design-vue'
 import { useSessionsStore } from '../store/sessions'
 
 const props = defineProps({ open: { type: Boolean, default: false } })
@@ -81,7 +82,7 @@ const columns = [
     customRender: ({ record }) => {
       const text = record.name + (record.current ? '（当前）' : '')
       return h(
-        'a-tooltip',
+        Tooltip,
         { placement: 'topLeft', title: text },
         {
           default: () =>
@@ -110,7 +111,7 @@ const columns = [
     customRender: ({ text }) => {
       const colorMap = { '配置/准备': 'blue', '讨论中': 'green', '投票中': 'orange', '已结束': 'default' }
       const color = colorMap[text] || 'default'
-      return h('a-tag', { color }, { default: () => text })
+      return h(Tag, { color }, { default: () => text })
     }
   },
   {
@@ -136,24 +137,24 @@ const columns = [
         { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
         [
           h(
-            'a-button',
+            Button,
             { type: 'primary', ghost: isCurrent, size: 'small', onClick: () => onOpen(record.id) },
             { default: () => '打开' }
           ),
           h(
-            'a-button',
+            Button,
             { size: 'small', onClick: () => onRename(record.id) },
             { default: () => '重命名' }
           ),
           h(
-            'a-button',
+            Button,
             { type: 'dashed', size: 'small', onClick: () => onExport(record.id) },
             { default: () => '导出 JSON' }
           ),
           h(
-            'a-popconfirm',
+            Popconfirm,
             { title: '确认删除该问诊？', onConfirm: () => onDelete(record.id) },
-            { default: () => h('a-button', { danger: true, size: 'small' }, { default: () => '删除' }) }
+            { default: () => h(Button, { danger: true, size: 'small' }, { default: () => '删除' }) }
           )
         ]
       )
