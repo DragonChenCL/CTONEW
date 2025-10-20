@@ -2,7 +2,10 @@
   <a-drawer v-model:open="open" title="问诊列表" width="720">
     <div style="margin-bottom: 12px; display:flex; gap:8px;">
       <a-button type="primary" @click="onCreate">新建问诊</a-button>
-      <a-button @click="saveNow">保存当前</a-button>
+      <a-button type="dashed" @click="saveNow">保存当前</a-button>
+      <a-popconfirm title="确认删除当前问诊？" @confirm="onDeleteCurrent">
+        <a-button danger>删除当前</a-button>
+      </a-popconfirm>
     </div>
     <a-table :data-source="rows" :columns="columns" :pagination="false" row-key="id" :row-class-name="rowClassName" />
   </a-drawer>
@@ -65,6 +68,10 @@ function onExport(id) {
   URL.revokeObjectURL(url)
 }
 
+function onDeleteCurrent() {
+  sessions.remove(sessions.currentId)
+}
+
 const columns = [
   {
     title: '名称',
@@ -106,7 +113,7 @@ const columns = [
           ),
           h(
             'a-button',
-            { size: 'small', onClick: () => onExport(record.id) },
+            { type: 'dashed', size: 'small', onClick: () => onExport(record.id) },
             { default: () => '导出 JSON' }
           ),
           h(
