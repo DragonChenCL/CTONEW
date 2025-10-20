@@ -37,6 +37,21 @@ export function buildVotePrompt(systemPrompt, caseInfo, discussionHistory, docto
   return { system, user }
 }
 
+export function buildFinalSummaryPrompt(systemPrompt, caseInfo, discussionHistory) {
+  const caseText = formatCase(caseInfo)
+  const historyText = discussionHistory
+    .filter((m) => m.type === 'doctor' || m.type === 'patient')
+    .map((m) => {
+      if (m.type === 'doctor') return `${m.doctorName}: ${m.content}`
+      const patientName = caseInfo?.name ? `患者（${caseInfo.name}）` : '患者'
+      return `${patientName}: ${m.content}`
+    })
+    .join('\n')
+
+  const user = `【患者病历】\n${caseText}\n\n【完整会诊纪要】\n${historyText || '（暂无）'}\n\n请用中文，以临床医生的口吻，给出最终总结。请至少包含：\n1) 核心诊断与分级（如无法明确请给出最可能诊断及概率）；\n2) 主要依据（条目式）；\n3) 鉴别诊断（按可能性排序）；\n4) 进一步检查与理由；\n5) 治疗与处置建议（药物剂量如适用）；\n6) 随访与复诊时机；\n7) 患者教育与风险提示。`
+  return { system: systemPrompt, user }
+}
+
 export function formatHistoryForProvider(discussionHistory, caseInfo) {
   const msgs = []
   for (const item of discussionHistory) {

@@ -98,7 +98,8 @@ export const useSessionsStore = defineStore('sessions', {
         doctors: undefined,
         patientCase: { name: '', age: null, pastHistory: '', currentProblem: '' },
         workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
-        discussionHistory: []
+        discussionHistory: [],
+        finalSummary: { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
       })
       return id
     },
@@ -135,12 +136,14 @@ export const useSessionsStore = defineStore('sessions', {
         if (payload.patientCase) consult.setPatientCase(payload.patientCase)
         if (payload.workflow) consult.workflow = payload.workflow
         if (payload.discussionHistory) consult.discussionHistory = payload.discussionHistory
+        if (payload.finalSummary) consult.finalSummary = payload.finalSummary
       } else {
         consult.settings = consult.settings // keep defaults
         consult.doctors = consult.doctors // keep defaults
         consult.setPatientCase({ name: '', age: null, pastHistory: '', currentProblem: '' })
         consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
+        consult.finalSummary = { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
       }
     },
     saveSnapshotFromConsult() {
