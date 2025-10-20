@@ -68,6 +68,9 @@
           <a-form-item label="全局系统提示词">
             <a-textarea v-model:value="localSettings.globalSystemPrompt" rows="6" />
           </a-form-item>
+          <a-form-item label="最终总结提示词（默认）">
+            <a-textarea v-model:value="localSettings.summaryPrompt" rows="6" />
+          </a-form-item>
           <a-form-item label="发言顺序">
             <a-radio-group v-model:value="localSettings.turnOrder">
               <a-radio value="random">随机</a-radio>
