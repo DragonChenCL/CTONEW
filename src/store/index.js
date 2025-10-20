@@ -2,6 +2,10 @@ import { defineStore } from 'pinia'
 import { callAI } from '../api/callAI'
 import { buildFullPrompt, formatHistoryForProvider } from '../utils/prompt'
 
+function delay(ms) {
+  return new Promise((res) => setTimeout(res, ms))
+}
+
 export const useConsultStore = defineStore('consult', {
   state: () => ({
     settings: {
@@ -56,7 +60,8 @@ export const useConsultStore = defineStore('consult', {
       currentRound: 0,
       roundsWithoutElimination: 0,
       activeTurn: null,
-      turnQueue: []
+      turnQueue: [],
+      paused: false
     },
     discussionHistory: []
   }),
@@ -85,9 +90,12 @@ export const useConsultStore = defineStore('consult', {
       if (!this.patientCase.name || !this.patientCase.currentProblem) {
         throw new Error('请填写患者名称和本次问题')
       }
+      // 新的问诊开始时，所有医生恢复为在席状态，清空票数，并取消暂停
+      this.doctors = this.doctors.map((d) => ({ ...d, status: 'active', votes: 0 }))
       this.workflow.phase = 'discussion'
       this.workflow.currentRound = 1
       this.workflow.roundsWithoutElimination = 0
+      this.workflow.paused = false
       this.discussionHistory.push({ type: 'system', content: `第 ${this.workflow.currentRound} 轮会诊开始` })
       this.generateTurnQueue()
       this.runDiscussionRound()
@@ -107,22 +115,38 @@ export const useConsultStore = defineStore('consult', {
       for (const doctorId of this.workflow.turnQueue) {
         const doctor = this.doctors.find((d) => d.id === doctorId)
         if (!doctor || doctor.status !== 'active') continue
+
+        // 如被暂停，等待恢复
+        await this.waitWhilePaused()
+
         this.workflow.activeTurn = doctorId
-        this.discussionHistory.push({ type: 'system', content: `${doctor.name} 正在输入...` })
+        // 提示“正在输入...”，随后在得到回复后移除
+        const typingIndex = this.discussionHistory.push({ type: 'system', content: `${doctor.name} 正在输入...` }) - 1
         const systemPrompt = doctor.customPrompt || this.settings.globalSystemPrompt
         const fullPrompt = buildFullPrompt(systemPrompt, this.patientCase, this.discussionHistory)
         try {
           const providerHistory = formatHistoryForProvider(this.discussionHistory)
           const response = await callAI(doctor, fullPrompt, providerHistory)
+
+          // 移除“正在输入...”提示
+          this.discussionHistory.splice(typingIndex, 1)
+
+          // 先插入空内容的医生气泡，然后打字机式填充
+          const msg = { type: 'doctor', doctorId: doctor.id, doctorName: doctor.name, content: '' }
+          this.discussionHistory.push(msg)
+          const messageIndex = this.discussionHistory.length - 1
+
+          for (let i = 0; i < response.length; i++) {
+            await this.waitWhilePaused()
+            this.discussionHistory[messageIndex].content += response[i]
+            await delay(15)
+          }
+
           this.workflow.activeTurn = null
-          this.discussionHistory.push({
-            type: 'doctor',
-            doctorId: doctor.id,
-            doctorName: doctor.name,
-            content: response
-          })
         } catch (e) {
           this.workflow.activeTurn = null
+          // 确保提示被移除
+          try { this.discussionHistory.splice(typingIndex, 1) } catch (err) {}
           this.discussionHistory.push({
             type: 'doctor',
             doctorId: doctor.id,
@@ -132,8 +156,35 @@ export const useConsultStore = defineStore('consult', {
         }
       }
       this.workflow.phase = 'voting'
-      this.discussionHistory.push({ type: 'system', content: '本轮发言结束，请投票选出最不合理的方案。' })
+      this.discussionHistory.push({ type: 'system', content: '本轮发言结束，医生团队正在投票...' })
+      await this.autoVoteAndProceed()
     },
+    // 控制暂停/恢复
+    pause() { this.workflow.paused = true },
+    resume() { this.workflow.paused = false },
+    togglePause() { this.workflow.paused = !this.workflow.paused },
+
+    async waitWhilePaused() {
+      while (this.workflow.paused) {
+        await delay(100)
+      }
+    },
+
+    async autoVoteAndProceed() {
+      // 医生之间自动投票（不允许投自己）
+      this.resetVotes()
+      const active = this.doctors.filter((d) => d.status === 'active').map((d) => d.id)
+      for (const voter of active) {
+        const choices = active.filter((id) => id !== voter)
+        if (!choices.length) continue
+        const pick = choices[Math.floor(Math.random() * choices.length)]
+        this.voteForDoctor(pick)
+        await delay(50)
+      }
+      await delay(200)
+      await this.confirmVote()
+    },
+
     voteForDoctor(doctorId) {
       this.doctors = this.doctors.map((d) => (d.id === doctorId ? { ...d, votes: d.votes + 1 } : d))
     },
