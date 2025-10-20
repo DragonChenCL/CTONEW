@@ -14,6 +14,29 @@ export function buildFullPrompt(systemPrompt, caseInfo, discussionHistory) {
   return { system: systemPrompt, user }
 }
 
+export function buildVotePrompt(systemPrompt, caseInfo, discussionHistory, doctors, voter) {
+  const caseText = formatCase(caseInfo)
+  const historyText = discussionHistory
+    .filter((m) => m.type === 'doctor' || m.type === 'patient')
+    .map((m) => {
+      if (m.type === 'doctor') return `${m.doctorName}: ${m.content}`
+      const patientName = caseInfo?.name ? `患者（${caseInfo.name}）` : '患者'
+      return `${patientName}: ${m.content}`
+    })
+    .join('\n')
+
+  const doctorList = (doctors || [])
+    .map((d) => `- ${d.name}（ID: ${d.id}）`)
+    .join('\n')
+
+  const voteInstruction =
+    '你现在处于投票阶段，请根据上述讨论投票淘汰一名医生。你可以投票给任何人，包括你自己。请严格仅输出一个JSON对象，不要包含任何其它文字或标记。JSON格式如下：{"targetDoctorId":"<医生ID>","reason":"<简短理由>"}\n请确保 targetDoctorId 必须是下面医生列表中的ID之一。'
+
+  const user = `【患者病历】\n${caseText}\n\n【讨论与患者补充】\n${historyText || '（暂无）'}\n\n【医生列表】\n${doctorList}\n\n你是 ${voter?.name || ''}（ID: ${voter?.id || ''}）。${voteInstruction}`
+  const system = `${systemPrompt}\n\n重要：现在只需进行投票与输出结果。严格仅输出JSON对象，格式为 {"targetDoctorId":"<医生ID>","reason":"<简短理由>"}。不要输出解释、Markdown 或其他多余内容。`
+  return { system, user }
+}
+
 export function formatHistoryForProvider(discussionHistory, caseInfo) {
   const msgs = []
   for (const item of discussionHistory) {

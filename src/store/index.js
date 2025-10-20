@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { callAI } from '../api/callAI'
-import { buildFullPrompt, formatHistoryForProvider } from '../utils/prompt'
+import { buildFullPrompt, buildVotePrompt, formatHistoryForProvider } from '../utils/prompt'
 
 function delay(ms) {
   return new Promise((res) => setTimeout(res, ms))
@@ -178,17 +178,68 @@ export const useConsultStore = defineStore('consult', {
     },
 
     async autoVoteAndProceed() {
-      // 医生之间自动投票（不允许投自己）
+      // 使用模型驱动的自动投票（允许投自己）
       this.resetVotes()
       this.lastRoundVotes = []
-      const active = this.doctors.filter((d) => d.status === 'active').map((d) => d.id)
-      for (const voter of active) {
-        const choices = active.filter((id) => id !== voter)
-        if (!choices.length) continue
-        const pick = choices[Math.floor(Math.random() * choices.length)]
-        const voterDoc = this.doctors.find((d) => d.id === voter)
-        const targetDoc = this.doctors.find((d) => d.id === pick)
-        const reason = `综合上述讨论，我认为 ${targetDoc?.name || ''} 的观点相对薄弱，投其一票。`
+
+      function parseVoteJSON(text) {
+        if (!text || typeof text !== 'string') return null
+        // 尝试截取第一个 { 到最后一个 }
+        const start = text.indexOf('{')
+        const end = text.lastIndexOf('}')
+        if (start !== -1 && end !== -1 && end > start) {
+          const candidate = text.slice(start, end + 1)
+          try {
+            return JSON.parse(candidate)
+          } catch (e) {
+            // 尝试简单修复：将单引号替换为双引号
+            try {
+              const fixed = candidate.replace(/'/g, '"')
+              return JSON.parse(fixed)
+            } catch (e2) {
+              return null
+            }
+          }
+        }
+        return null
+      }
+
+      const activeDocs = this.doctors.filter((d) => d.status === 'active')
+      const activeIds = activeDocs.map((d) => d.id)
+
+      for (const voterDoc of activeDocs) {
+        await this.waitWhilePaused()
+        let targetId = null
+        let reason = ''
+
+        try {
+          // 如果无 API Key，则使用确定性的回退策略：自投
+          if (!voterDoc.apiKey) {
+            targetId = voterDoc.id
+            reason = '模拟模式：自评其方案需进一步论证，投给自己。'
+          } else {
+            const systemPrompt = voterDoc.customPrompt || this.settings.globalSystemPrompt
+            const fullPrompt = buildVotePrompt(systemPrompt, this.patientCase, this.discussionHistory, activeDocs, voterDoc)
+            const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase)
+            const response = await callAI(voterDoc, fullPrompt, providerHistory)
+            const parsed = parseVoteJSON(response)
+            if (parsed && typeof parsed.targetDoctorId === 'string') {
+              targetId = parsed.targetDoctorId
+              reason = String(parsed.reason || '').trim() || '综合讨论后做出的判断。'
+            }
+          }
+        } catch (e) {
+          // 忽略错误，使用回退
+        }
+
+        if (!targetId || !activeIds.includes(targetId)) {
+          // 若解析失败或模型选择了不在列表中的ID，回退为自投
+          targetId = voterDoc.id
+          if (!reason) reason = '解析失败：默认投给自己。'
+        }
+
+        const targetDoc = this.doctors.find((d) => d.id === targetId)
+
         this.lastRoundVotes.push({
           round: this.workflow.currentRound,
           voterId: voterDoc?.id,
@@ -197,6 +248,7 @@ export const useConsultStore = defineStore('consult', {
           targetName: targetDoc?.name,
           reason
         })
+
         this.discussionHistory.push({
           type: 'vote_detail',
           voterId: voterDoc?.id,
@@ -205,7 +257,8 @@ export const useConsultStore = defineStore('consult', {
           targetName: targetDoc?.name,
           reason
         })
-        this.voteForDoctor(pick)
+
+        this.voteForDoctor(targetId)
         await delay(50)
       }
       await delay(200)
