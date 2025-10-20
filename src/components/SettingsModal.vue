@@ -112,8 +112,8 @@ const statusOptions = [
   { label: '淘汰', value: 'eliminated' }
 ]
 
-const localDoctors = ref(structuredClone(store.doctors))
-const localSettings = ref(structuredClone(store.settings))
+const localDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
+const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
 const modelOptions = ref({})
 const loadingModel = ref({})
 
@@ -121,8 +121,8 @@ watch(
   () => props.open,
   (v) => {
     if (v) {
-      localDoctors.value = structuredClone(store.doctors)
-      localSettings.value = structuredClone(store.settings)
+      localDoctors.value = JSON.parse(JSON.stringify(store.doctors))
+      localSettings.value = JSON.parse(JSON.stringify(store.settings))
     }
   }
 )
