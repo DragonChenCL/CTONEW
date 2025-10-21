@@ -28,7 +28,7 @@ function renderItem({ item }) {
       h(
         'div',
         { style: { color: '#8c8c8c', fontSize: '12px' } },
-        item.status === 'active' ? '在席' : '淘汰'
+        item.status === 'active' ? '在席' : '不太准确'
       )
     ]
   )

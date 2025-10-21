@@ -109,7 +109,7 @@ const columns = [
     key: 'status',
     width: 100,
     customRender: ({ text }) => {
-      const colorMap = { '配置/准备': 'blue', '讨论中': 'green', '投票中': 'orange', '已结束': 'default' }
+      const colorMap = { '配置/准备': 'blue', '讨论中': 'green', '评估中': 'orange', '已结束': 'default' }
       const color = colorMap[text] || 'default'
       return h(Tag, { color }, { default: () => text })
     }
