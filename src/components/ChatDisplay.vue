@@ -24,9 +24,9 @@
       </template>
       <template v-else-if="item.type === 'vote_detail'">
         <div class="vote-detail">
-          <span class="badge">投票</span>
+          <span class="badge">评估</span>
           <span class="text">
-            {{ item.voterName }} 投票淘汰 {{ item.targetName }}：{{ item.reason }}
+            {{ item.voterName }} 标注 {{ item.targetName }} 为不太准确：{{ item.reason }}
           </span>
         </div>
       </template>

@@ -1,10 +1,10 @@
 <template>
   <div>
-    <div style="font-weight: 600; margin-bottom: 8px;">票数统计</div>
+    <div style="font-weight: 600; margin-bottom: 8px;">标记统计</div>
     <a-table :pagination="false" :data-source="data" :columns="columns" size="small" row-key="id" />
 
     <div v-if="votes && votes.length" style="margin-top: 12px;">
-      <div style="font-weight: 600; margin-bottom: 6px;">投票详情</div>
+      <div style="font-weight: 600; margin-bottom: 6px;">标记详情</div>
       <a-list :data-source="votes" :renderItem="renderVote" size="small" />
     </div>
   </div>
@@ -20,7 +20,7 @@ const votes = computed(() => props.votes)
 
 const columns = [
   { title: '医生', dataIndex: 'name', key: 'name' },
-  { title: '票数', dataIndex: 'votes', key: 'votes', width: 80 }
+  { title: '标记数', dataIndex: 'votes', key: 'votes', width: 80 }
 ]
 
 function renderVote({ item }) {

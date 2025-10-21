@@ -62,7 +62,7 @@
       </a-tab-pane>
       <a-tab-pane key="session" tab="问诊医生">
         <a-space direction="vertical" style="width: 100%">
-          <a-alert type="info" show-icon message="当前问诊医生" description="从全局配置中选择医生加入本次问诊。“在席/淘汰”状态仅属于当前问诊。" />
+          <a-alert type="info" show-icon message="当前问诊医生" description="从全局配置中选择医生加入本次问诊。“在席/不太准确”状态仅属于当前问诊。" />
           <div style="display:flex; gap: 8px;">
             <a-select v-model:value="selectedToAdd" :options="globalDoctorOptions" style="flex:1;" placeholder="选择要添加的医生" />
             <a-button type="primary" @click="addToConsult">添加</a-button>
@@ -88,7 +88,7 @@
               <a-radio value="custom">自定义（按医生列表顺序）</a-radio>
             </a-radio-group>
           </a-form-item>
-          <a-form-item label="无人出局的最大轮数">
+          <a-form-item label="连续未标注不太准确的最大轮数">
             <a-input-number v-model:value="localSettings.maxRoundsWithoutElimination" :min="1" />
           </a-form-item>
         </a-form>

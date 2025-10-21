@@ -135,7 +135,7 @@ export const useConsultStore = defineStore('consult', {
         }
       }
       this.workflow.phase = 'voting'
-      this.discussionHistory.push({ type: 'system', content: '本轮发言结束，医生团队正在投票...' })
+      this.discussionHistory.push({ type: 'system', content: '本轮发言结束，医生团队正在评估答案...' })
       await this.autoVoteAndProceed()
     },
     // 控制暂停/恢复
@@ -188,7 +188,7 @@ export const useConsultStore = defineStore('consult', {
           // 如果无 API Key，则使用确定性的回退策略：自投
           if (!voterDoc.apiKey) {
             targetId = voterDoc.id
-            reason = '模拟模式：自评其方案需进一步论证，投给自己。'
+            reason = '模拟模式：自评其答案需进一步论证，标注自己。'
           } else {
             const systemPrompt = voterDoc.customPrompt || this.settings.globalSystemPrompt
             const fullPrompt = buildVotePrompt(systemPrompt, this.patientCase, this.discussionHistory, activeDocs, voterDoc)
@@ -205,9 +205,9 @@ export const useConsultStore = defineStore('consult', {
         }
 
         if (!targetId || !activeIds.includes(targetId)) {
-          // 若解析失败或模型选择了不在列表中的ID，回退为自投
+          // 若解析失败或模型选择了不在列表中的ID，回退为自标
           targetId = voterDoc.id
-          if (!reason) reason = '解析失败：默认投给自己。'
+          if (!reason) reason = '解析失败：默认标注自己。'
         }
 
         const targetDoc = this.doctors.find((d) => d.id === targetId)
@@ -274,19 +274,19 @@ export const useConsultStore = defineStore('consult', {
       const top = activeOrElim.filter((d) => d.votes === maxVotes)
       if (top.length !== 1 || maxVotes === 0) {
         this.workflow.roundsWithoutElimination += 1
-        return { eliminated: null, message: '投票结束：因平票或无人投票，本轮无人淘汰。' }
+        return { eliminated: null, message: '评估结束：因意见不一或未明确，本轮未标注不太准确。' }
       }
       const target = top[0]
       this.doctors = this.doctors.map((d) => (d.id === target.id ? { ...d, status: 'eliminated' } : d))
       this.workflow.roundsWithoutElimination = 0
-      return { eliminated: target, message: `投票结束：${target.name} 被淘汰。` }
+      return { eliminated: target, message: `评估结束：${target.name} 已被标注为不太准确，并暂停参与后续讨论。` }
     },
     checkEndConditions(eliminated) {
       const activeCount = this.doctors.filter((d) => d.status === 'active').length
       if (this.workflow.roundsWithoutElimination >= this.settings.maxRoundsWithoutElimination) {
         this.workflow.phase = 'finished'
-        this.discussionHistory.push({ type: 'system', content: '达到无淘汰轮数上限，会诊结束。' })
-        // 无单一胜者时也需要输出最终总结，默认由首位在席医生生成
+        this.discussionHistory.push({ type: 'system', content: '达到未标注不太准确轮数上限，会诊结束。' })
+        // 无单一推荐者时也需要输出最终答案，默认由首位在席医生生成
         this.generateFinalSummary()
         return true
       }
@@ -294,10 +294,10 @@ export const useConsultStore = defineStore('consult', {
         this.workflow.phase = 'finished'
         if (activeCount === 1) {
           const winner = this.doctors.find((d) => d.status === 'active')
-          this.discussionHistory.push({ type: 'system', content: `会诊结束：${winner?.name || ''} 获胜。` })
+          this.discussionHistory.push({ type: 'system', content: `会诊结束：采用 ${winner?.name || ''} 的答案。` })
           this.generateFinalSummary(winner?.id)
         } else {
-          this.discussionHistory.push({ type: 'system', content: '会诊结束：无存活医生。' })
+          this.discussionHistory.push({ type: 'system', content: '会诊结束：无在席医生。' })
           this.generateFinalSummary()
         }
         return true

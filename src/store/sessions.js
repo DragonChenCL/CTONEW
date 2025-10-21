@@ -12,7 +12,7 @@ function statusText(phase) {
     case 'discussion':
       return '讨论中'
     case 'voting':
-      return '投票中'
+      return '评估中'
     case 'finished':
       return '已结束'
     default:

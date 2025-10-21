@@ -1,6 +1,6 @@
 <template>
   <div class="voting">
-    <div class="title">请选择本轮最不合理的方案：</div>
+    <div class="title">请选择本轮你认为不太准确的答案：</div>
     <div class="btns">
       <a-button
         v-for="doc in store.doctors"
@@ -13,9 +13,9 @@
         {{ doc.name }}
       </a-button>
     </div>
-    <div v-if="selected" style="margin-top:8px; color:#8c8c8c;">您已投票给 {{ doctorName(selected) }}</div>
+    <div v-if="selected" style="margin-top:8px; color:#8c8c8c;">您已标注为不太准确：{{ doctorName(selected) }}</div>
     <div style="margin-top:12px;">
-      <a-button type="primary" :disabled="!selected" @click="confirm">确认投票并进入下一轮</a-button>
+      <a-button type="primary" :disabled="!selected" @click="confirm">确认并进入下一轮</a-button>
     </div>
   </div>
 </template>

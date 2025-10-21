@@ -30,10 +30,10 @@ export function buildVotePrompt(systemPrompt, caseInfo, discussionHistory, docto
     .join('\n')
 
   const voteInstruction =
-    '你现在处于投票阶段，请根据上述讨论投票淘汰一名医生。你可以投票给任何人，包括你自己。请严格仅输出一个JSON对象，不要包含任何其它文字或标记。JSON格式如下：{"targetDoctorId":"<医生ID>","reason":"<简短理由>"}\n请确保 targetDoctorId 必须是下面医生列表中的ID之一。'
+    '你现在处于评估阶段，请根据上述讨论标注你认为本轮最不太准确的答案对应的医生（可选择自己）。请严格仅输出一个JSON对象，不要包含任何其它文字或标记。JSON格式如下：{"targetDoctorId":"<医生ID>","reason":"<简短理由>"}\n请确保 targetDoctorId 必须是下面医生列表中的ID之一。'
 
   const user = `【患者病历】\n${caseText}\n\n【讨论与患者补充】\n${historyText || '（暂无）'}\n\n【医生列表】\n${doctorList}\n\n你是 ${voter?.name || ''}（ID: ${voter?.id || ''}）。${voteInstruction}`
-  const system = `${systemPrompt}\n\n重要：现在只需进行投票与输出结果。严格仅输出JSON对象，格式为 {"targetDoctorId":"<医生ID>","reason":"<简短理由>"}。不要输出解释、Markdown 或其他多余内容。`
+  const system = `${systemPrompt}\n\n重要：现在只需进行评估并输出结果。严格仅输出JSON对象，格式为 {"targetDoctorId":"<医生ID>","reason":"<简短理由>"}。不要输出解释、Markdown 或其他多余内容。`
   return { system, user }
 }
 
