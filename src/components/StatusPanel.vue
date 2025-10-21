@@ -154,7 +154,7 @@ const phaseText = computed(() => {
 
 const winnerText = computed(() => {
   const actives = store.doctors.filter((d) => d.status === "active");
-  if (actives.length === 1) return `更优答案来自：${actives[0].name}`;
+  if (actives.length === 1) return `最终答案来自：${actives[0].name}`;
   return "已达到未标注不太准确轮数上限";
 });
 
