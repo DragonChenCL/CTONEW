@@ -95,6 +95,52 @@
           </a-form-item>
         </a-form>
       </a-tab-pane>
+      <a-tab-pane key="imageRecognition" tab="图像识别AI">
+        <a-form layout="vertical">
+          <a-form-item>
+            <a-switch v-model:checked="localImageRecognition.enabled" />
+            <span style="margin-left: 8px;">启用图像识别功能</span>
+          </a-form-item>
+          <template v-if="localImageRecognition.enabled">
+            <a-alert type="info" show-icon message="使用硅基流动的图片识别API" description="请选择支持图片识别的模型，并填写相应的API Key。" style="margin-bottom: 16px;" />
+            <a-row :gutter="8">
+              <a-col :span="12">
+                <a-form-item label="供应商">
+                  <a-select v-model:value="localImageRecognition.provider" disabled>
+                    <a-select-option value="siliconflow">硅基流动</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item label="API Key">
+                  <a-input-password v-model:value="localImageRecognition.apiKey" placeholder="sk-..." />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row :gutter="8">
+              <a-col :span="16">
+                <a-form-item label="模型名称">
+                  <a-select v-model:value="localImageRecognition.model" show-search placeholder="选择支持图片识别的模型">
+                    <a-select-option value="Pro/Qwen/Qwen2-VL-72B-Instruct">Qwen2-VL-72B-Instruct</a-select-option>
+                    <a-select-option value="Pro/Qwen/Qwen2-VL-7B-Instruct">Qwen2-VL-7B-Instruct</a-select-option>
+                    <a-select-option value="OpenGVLab/InternVL2-26B">InternVL2-26B</a-select-option>
+                    <a-select-option value="OpenGVLab/InternVL2-8B">InternVL2-8B</a-select-option>
+                    <a-select-option value="stepfun-ai/GOT-OCR2_0">GOT-OCR2_0</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="自定义 Base URL">
+                  <a-input v-model:value="localImageRecognition.baseUrl" placeholder="留空使用默认" />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-form-item label="图像识别提示词">
+              <a-textarea v-model:value="localImageRecognition.prompt" rows="4" placeholder="描述图像识别的需求..." />
+            </a-form-item>
+          </template>
+        </a-form>
+      </a-tab-pane>
     </a-tabs>
   </a-modal>
 </template>
@@ -143,6 +189,7 @@ const localDoctors = ref(JSON.parse(JSON.stringify(global.doctors)))
 const consultDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
 
 const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
+const localImageRecognition = ref(JSON.parse(JSON.stringify(global.imageRecognition || {})))
 const modelOptions = ref({})
 const loadingModel = ref({})
 
@@ -153,6 +200,7 @@ watch(
       localDoctors.value = JSON.parse(JSON.stringify(global.doctors))
       consultDoctors.value = JSON.parse(JSON.stringify(store.doctors))
       localSettings.value = JSON.parse(JSON.stringify(store.settings))
+      localImageRecognition.value = JSON.parse(JSON.stringify(global.imageRecognition || {}))
     }
   }
 )
@@ -253,6 +301,7 @@ function renderConsultDoctor({ item }) {
 function onSave() {
   // 保存全局配置的医生
   global.setDoctors(localDoctors.value)
+  global.setImageRecognition(localImageRecognition.value)
   // 保存当前问诊设置与所选医生
   store.setSettings(localSettings.value)
   store.setDoctors(consultDoctors.value)

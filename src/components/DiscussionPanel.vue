@@ -12,7 +12,7 @@
           </div>
         </div>
       </div>
-      <ChatDisplay :history="store.discussionHistory" :active-id="store.workflow.activeTurn" />
+      <ChatDisplay class="chat-scroll-area" :history="store.discussionHistory" :active-id="store.workflow.activeTurn" />
       <div class="chat-input">
         <a-input-search
           v-model:value="input"
@@ -63,8 +63,7 @@ function onSend() {
 .chat-wrapper {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: calc(100vh - 160px);
+  height: 100%;
   border: 1px solid #f0f0f0;
   border-radius: 12px;
   overflow: hidden;
@@ -77,11 +76,19 @@ function onSend() {
   border-radius: 8px 8px 0 0;
   flex-shrink: 0;
 }
+.chat-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .chat-input {
+  position: sticky;
+  bottom: 0;
   border-top: 1px solid #f0f0f0;
   padding: 8px;
   background: #fff;
   border-radius: 0 0 8px 8px;
   flex-shrink: 0;
+  z-index: 10;
 }
 </style>

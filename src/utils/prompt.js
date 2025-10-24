@@ -73,5 +73,6 @@ function formatCase(info) {
   if (info.age !== null && info.age !== undefined) parts.push(`年龄: ${info.age}`)
   if (info.pastHistory) parts.push(`既往史: ${info.pastHistory}`)
   if (info.currentProblem) parts.push(`主诉: ${info.currentProblem}`)
+  if (info.imageRecognitionResult) parts.push(`图片识别结果: ${info.imageRecognitionResult}`)
   return parts.join('\n')
 }

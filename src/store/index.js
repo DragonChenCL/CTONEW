@@ -20,7 +20,8 @@ export const useConsultStore = defineStore('consult', {
       name: '',
       age: null,
       pastHistory: '',
-      currentProblem: ''
+      currentProblem: '',
+      imageRecognitionResult: ''
     },
     workflow: {
       phase: 'setup',

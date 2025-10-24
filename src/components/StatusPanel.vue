@@ -28,12 +28,15 @@
       <a-descriptions-item label="年龄">{{
         store.patientCase.age ?? "—"
       }}</a-descriptions-item>
-      <a-descriptions-item label="既往疾病">{{
-        store.patientCase.pastHistory || "—"
-      }}</a-descriptions-item>
-      <a-descriptions-item label="本次问题">{{
-        store.patientCase.currentProblem || "—"
-      }}</a-descriptions-item>
+      <a-descriptions-item label="既往疾病">
+        <ExpandableText :text="store.patientCase.pastHistory || '—'" />
+      </a-descriptions-item>
+      <a-descriptions-item label="本次问题">
+        <ExpandableText :text="store.patientCase.currentProblem || '—'" />
+      </a-descriptions-item>
+      <a-descriptions-item v-if="store.patientCase.imageRecognitionResult" label="图片识别结果">
+        <ExpandableText :text="store.patientCase.imageRecognitionResult" />
+      </a-descriptions-item>
     </a-descriptions>
 
     <DoctorList :doctors="store.doctors" />
@@ -109,6 +112,7 @@
           <div>年龄：{{ store.patientCase.age ?? "—" }}</div>
           <div>既往疾病：{{ store.patientCase.pastHistory || "—" }}</div>
           <div>本次问题：{{ store.patientCase.currentProblem || "—" }}</div>
+          <div v-if="store.patientCase.imageRecognitionResult">图片识别结果：{{ store.patientCase.imageRecognitionResult }}</div>
         </div>
         <div
           v-html="renderMarkdown(store.finalSummary.content)"
@@ -132,6 +136,7 @@ import { marked } from "marked";
 import { useConsultStore } from "../store";
 import DoctorList from "./DoctorList.vue";
 import VoteTally from "./VoteTally.vue";
+import ExpandableText from "./ExpandableText.vue";
 
 const store = useConsultStore();
 const summaryOpen = ref(false);
@@ -208,6 +213,7 @@ function resetAll() {
     age: null,
     pastHistory: "",
     currentProblem: "",
+    imageRecognitionResult: "",
   };
   store.finalSummary = {
     status: "idle",
@@ -270,12 +276,20 @@ function resetAll() {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .status-panel-card :deep(.ant-card-body) {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
-  max-height: calc(100vh - 200px);
+}
+
+.status-panel-card :deep(.ant-card-body) {
+  scrollbar-width: thin;
+}
+
+.status-panel-card :deep(.ant-card-body::-webkit-scrollbar) {
+  width: 6px;
 }
 </style>
