@@ -6,9 +6,12 @@
       </template>
       <template v-else-if="item.type === 'doctor'">
         <div class="doctor-msg">
-          <div class="avatar">{{ initials(item.doctorName) }}</div>
-          <div class="bubble doctor">
-            <div class="name">{{ item.doctorName }}</div>
+          <div class="avatar" :style="{ background: getDoctorColor(item.doctorId) }">{{ initials(item.doctorName) }}</div>
+          <div class="bubble doctor" :style="{ 
+            background: getDoctorBubbleColor(item.doctorId),
+            borderColor: getDoctorBorderColor(item.doctorId)
+          }">
+            <div class="name" :style="{ color: getDoctorNameColor(item.doctorId) }">{{ item.doctorName }}</div>
             <div class="content" v-html="renderMarkdown(item.content)"></div>
           </div>
         </div>
@@ -69,6 +72,45 @@ watch(
   }
 )
 
+const doctorPalette = [
+  { avatar: '#2f54eb', bubble: '#f0f5ff', border: '#adc6ff', name: '#1d39c4' },
+  { avatar: '#08979c', bubble: '#e6fffb', border: '#87e8de', name: '#006d75' },
+  { avatar: '#d46b08', bubble: '#fff7e6', border: '#ffd591', name: '#ad4e00' },
+  { avatar: '#531dab', bubble: '#f9f0ff', border: '#d3adf7', name: '#391085' },
+  { avatar: '#237804', bubble: '#f6ffed', border: '#b7eb8f', name: '#1a4f08' },
+  { avatar: '#a8071a', bubble: '#fff1f0', border: '#ffccc7', name: '#820014' }
+]
+
+function paletteIndex(doctorId) {
+  const str = doctorId || ''
+  if (!str) return 0
+  let hash = 0
+  for (let i = 0; i < str.length; i += 1) {
+    hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff
+  }
+  return Math.abs(hash) % doctorPalette.length
+}
+
+function getDoctorTheme(doctorId) {
+  return doctorPalette[paletteIndex(doctorId)]
+}
+
+function getDoctorColor(doctorId) {
+  return getDoctorTheme(doctorId).avatar
+}
+
+function getDoctorBubbleColor(doctorId) {
+  return getDoctorTheme(doctorId).bubble
+}
+
+function getDoctorBorderColor(doctorId) {
+  return getDoctorTheme(doctorId).border
+}
+
+function getDoctorNameColor(doctorId) {
+  return getDoctorTheme(doctorId).name
+}
+
 function renderMarkdown(text) {
   try {
     return marked.parse(text || '')
@@ -90,9 +132,10 @@ function initials(name) {
 <style scoped>
 .chat-display {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 12px;
-  background: #fafafa;
+  background: linear-gradient(180deg, #f9fbff 0%, #f6f9ff 100%);
   border-radius: 8px 8px 0 0;
 }
 .chat-item {
@@ -134,13 +177,18 @@ function initials(name) {
 }
 .avatar.patient { background: #13c2c2; }
 .bubble {
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
   max-width: 70%;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-width: 1.5px;
+  border-style: solid;
+  transition: all 0.2s ease;
 }
-.bubble.doctor { background: #f6ffed; border: 1px solid #b7eb8f; }
-.bubble.patient { background: #e6f7ff; border: 1px solid #91d5ff; }
+.bubble:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.bubble.patient { background: #e6f7ff; border-color: #91d5ff; }
 .name {
   font-weight: 600;
   color: #555;

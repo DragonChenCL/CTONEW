@@ -37,16 +37,18 @@
                   </a-col>
                   <a-col :span="12">
                     <a-form-item label="选择模型">
-                      <div style="display:flex; gap:8px;">
+                      <div style="display:flex; gap:8px; align-items: flex-start;">
                         <a-select
-                          style="flex:1;"
+                          class="model-select"
+                          style="flex:1; min-width: 0;"
                           v-model:value="element.model"
                           :options="modelOptions[element.id] || []"
                           show-search
                           :loading="loadingModel[element.id]"
                           placeholder="点击右侧按钮加载模型列表"
+                          :dropdown-match-select-width="false"
                         />
-                        <a-button :loading="loadingModel[element.id]" @click="() => loadModels(element)">加载模型</a-button>
+                        <a-button :loading="loadingModel[element.id]" style="flex-shrink: 0;" @click="() => loadModels(element)">加载模型</a-button>
                       </div>
                     </a-form-item>
                   </a-col>
@@ -247,3 +249,15 @@ function onSave() {
   open.value = false
 }
 </script>
+
+<style scoped>
+.model-select {
+  max-width: 100%;
+}
+
+.model-select :deep(.ant-select-selector) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

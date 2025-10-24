@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="['discussion-panel', { 'discussion-panel--chat': store.workflow.phase !== 'setup' }]">
     <CaseInputForm v-if="store.workflow.phase === 'setup'" />
     <div v-else class="chat-wrapper">
       <div class="controls">
@@ -49,23 +49,39 @@ function onSend() {
 </script>
 
 <style scoped>
+.discussion-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.discussion-panel--chat {
+  height: 100%;
+}
+
 .chat-wrapper {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 128px);
+  flex: 1;
+  min-height: calc(100vh - 160px);
   border: 1px solid #f0f0f0;
-  border-radius: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
 }
 .controls {
   border-bottom: 1px solid #f0f0f0;
   padding: 8px;
   background: #fff;
   border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
 }
 .chat-input {
   border-top: 1px solid #f0f0f0;
   padding: 8px;
   background: #fff;
   border-radius: 0 0 8px 8px;
+  flex-shrink: 0;
 }
 </style>
