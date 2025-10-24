@@ -44,7 +44,7 @@ export async function recognizeImageWithSiliconFlow({ apiKey, baseUrl, model, pr
         role: 'system',
         content: [
           {
-            type: 'input_text',
+            type: 'text',
             text: prompt ||
               '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。'
           }
@@ -53,8 +53,8 @@ export async function recognizeImageWithSiliconFlow({ apiKey, baseUrl, model, pr
       {
         role: 'user',
         content: [
-          { type: 'input_text', text: '请根据上述要求分析以下图片，并返回详细的医学描述。' },
-          { type: 'input_image', image_base64: imageBase64 }
+          { type: 'text', text: '请根据上述要求分析以下图片，并返回详细的医学描述。' },
+          { type: 'image_url', image_url: `data:image/jpeg;base64,${imageBase64}` }
         ]
       }
     ],
