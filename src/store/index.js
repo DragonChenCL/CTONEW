@@ -18,6 +18,7 @@ export const useConsultStore = defineStore('consult', {
     doctors: [],
     patientCase: {
       name: '',
+      gender: '',
       age: null,
       pastHistory: '',
       currentProblem: '',

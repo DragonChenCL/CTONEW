@@ -70,6 +70,10 @@ export function formatHistoryForProvider(discussionHistory, caseInfo) {
 function formatCase(info) {
   const parts = []
   if (info.name) parts.push(`姓名: ${info.name}`)
+  if (info.gender) {
+    const genderMap = { male: '男', female: '女', other: '其他' }
+    parts.push(`性别: ${genderMap[info.gender] || info.gender}`)
+  }
   if (info.age !== null && info.age !== undefined) parts.push(`年龄: ${info.age}`)
   if (info.pastHistory) parts.push(`既往史: ${info.pastHistory}`)
   if (info.currentProblem) parts.push(`主诉: ${info.currentProblem}`)
