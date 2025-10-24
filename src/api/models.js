@@ -19,6 +19,10 @@ export async function listModels(provider, apiKey, baseUrl) {
       return toOptions(await listAnthropicModels(apiKey, baseUrl))
     case 'gemini':
       return toOptions(await listGeminiModels(apiKey, baseUrl))
+    case 'siliconflow':
+      return toOptions(await listSiliconFlowModels(apiKey, baseUrl))
+    case 'modelscope':
+      return toOptions(await listModelScopeModels(apiKey, baseUrl))
     default:
       return []
   }
@@ -70,4 +74,36 @@ export async function listGeminiModels(apiKey, baseUrl) {
     }
   }
   return models.sort((a, b) => a.id.localeCompare(b.id))
+}
+
+export async function listSiliconFlowModels(apiKey, baseUrl) {
+  const root = normalizeBaseUrl(baseUrl, 'https://api.siliconflow.cn')
+  const url = wrapUrlForDev(`${root}/v1/models`)
+  const res = await axios.get(url, {
+    headers: { Authorization: `Bearer ${apiKey}` }
+  })
+  const data = res.data?.data || res.data?.models || []
+  return data
+    .map((m) => ({
+      id: m.id || m.name,
+      displayName: m.display_name || m.owned_by || m.provider || undefined
+    }))
+    .filter((m) => !!m.id)
+    .sort((a, b) => a.id.localeCompare(b.id))
+}
+
+export async function listModelScopeModels(apiKey, baseUrl) {
+  const root = normalizeBaseUrl(baseUrl, 'https://dashscope.aliyuncs.com')
+  const url = wrapUrlForDev(`${root}/compatible-mode/v1/models`)
+  const res = await axios.get(url, {
+    headers: { Authorization: `Bearer ${apiKey}` }
+  })
+  const data = res.data?.data || res.data?.models || []
+  return data
+    .map((m) => ({
+      id: m.id || m.name,
+      displayName: m.display_name || m.owned_by || m.provider || undefined
+    }))
+    .filter((m) => !!m.id)
+    .sort((a, b) => a.id.localeCompare(b.id))
 }

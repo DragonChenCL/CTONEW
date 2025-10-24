@@ -121,10 +121,21 @@ watch(
 watch(open, (v) => emit('update:open', v))
 
 const providerOptions = [
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Anthropic', value: 'anthropic' },
-  { label: 'Gemini', value: 'gemini' }
+  { label: 'OpenAI规范', value: 'openai' },
+  { label: 'Anthropic规范', value: 'anthropic' },
+  { label: 'Gemini规范', value: 'gemini' },
+  { label: '硅基流动', value: 'siliconflow' },
+  { label: '魔搭社区', value: 'modelscope' }
 ]
+
+const providerLabelMap = providerOptions.reduce((acc, cur) => {
+  acc[cur.value] = cur.label
+  return acc
+}, {})
+
+function resolveProviderLabel(value) {
+  return providerLabelMap[value] || value
+}
 
 // 全局医生配置（不含在席/淘汰状态）
 const localDoctors = ref(JSON.parse(JSON.stringify(global.doctors)))
@@ -194,7 +205,7 @@ const globalDoctorOptions = computed(() => {
   const included = new Set((consultDoctors.value || []).map((d) => d.id))
   return (global.doctors || [])
     .filter((d) => !included.has(d.id))
-    .map((d) => ({ label: `${d.name}（${d.provider}•${d.model}）`, value: d.id }))
+    .map((d) => ({ label: `${d.name}（${resolveProviderLabel(d.provider)}•${d.model}）`, value: d.id }))
 })
 
 function addToConsult() {
@@ -228,7 +239,7 @@ function renderConsultDoctor({ item }) {
     [
       h('div', [
         h('div', { style: { fontWeight: '600' } }, item.name),
-        h('div', { style: { color: '#8c8c8c', fontSize: '12px' } }, `${item.provider} • ${item.model}`)
+        h('div', { style: { color: '#8c8c8c', fontSize: '12px' } }, `${resolveProviderLabel(item.provider)} • ${item.model}`)
       ]),
       h(
         AButton,

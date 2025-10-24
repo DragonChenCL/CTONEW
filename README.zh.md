@@ -19,7 +19,7 @@ AI 医疗会诊面板是一个创新的医疗会诊模拟系统，通过集成�
 ### ✨ 核心特性
 
 - 🏥 **多医生协作**：支持添加多个由不同 LLM 驱动的医生参与会诊
-- 🤖 **多模型支持**：集成 OpenAI、Anthropic Claude、Google Gemini 等主流 AI 模型
+- 🤖 **多模型支持**：集成 OpenAI、Anthropic Claude、Google Gemini、硅基流动、魔搭社区等主流 AI 模型
 - 💬 **实时讨论**：医生轮流发言，支持打字机效果展示
 - 🗳️ **智能评估**：医生互相评估彼此的诊断，自动淘汰不准确的意见
 - 📊 **状态监控**：实时显示会诊阶段、轮次、医生状态等信息
@@ -80,7 +80,7 @@ npm run build
 1. 点击右上角的 **"设置"** 按钮
 2. 在 **"医生配置"** 标签页中添加医生：
    - 输入医生名称（例如：Dr. GPT-4）
-   - 选择供应商（OpenAI / Anthropic / Gemini）
+   - 选择供应商（OpenAI规范 / Anthropic规范 / Gemini规范 / 硅基流动 / 魔搭社区）
    - 填写对应的 API Key
    - 可选：自定义 Base URL（用于代理或私有部署）
    - 选择或输入模型名称
@@ -169,7 +169,7 @@ ai-medical-consultation-panel/
 
 ### 支持的 AI 供应商
 
-#### 1. OpenAI
+#### 1. OpenAI规范
 
 - **API Key 获取**：访问 [OpenAI Platform](https://platform.openai.com/api-keys)
 - **推荐模型**：
@@ -177,8 +177,9 @@ ai-medical-consultation-panel/
   - `gpt-4o-mini`：更快、更经济的选择
   - `gpt-4-turbo`：高性能模型
 - **Base URL**：默认为 `https://api.openai.com/v1`
+- **说明**：符合 OpenAI API 规范的服务商均可使用此选项
 
-#### 2. Anthropic Claude
+#### 2. Anthropic规范
 
 - **API Key 获取**：访问 [Anthropic Console](https://console.anthropic.com/)
 - **推荐模型**：
@@ -186,14 +187,38 @@ ai-medical-consultation-panel/
   - `claude-3-opus-20240229`：最强推理能力
   - `claude-3-haiku-20240307`：快速响应
 - **Base URL**：默认为 `https://api.anthropic.com/v1`
+- **说明**：符合 Anthropic API 规范的服务商均可使用此选项
 
-#### 3. Google Gemini
+#### 3. Gemini规范
 
 - **API Key 获取**：访问 [Google AI Studio](https://aistudio.google.com/app/apikey)
 - **推荐模型**：
   - `gemini-1.5-pro`：旗舰模型
   - `gemini-1.5-flash`：快速模型
 - **Base URL**：默认为 `https://generativelanguage.googleapis.com/v1beta`
+- **说明**：符合 Gemini API 规范的服务商均可使用此选项
+
+#### 4. 硅基流动
+
+- **API Key 获取**：访问 [硅基流动控制台](https://cloud.siliconflow.cn/account/ak)
+- **推荐模型**：
+  - `Qwen/Qwen2.5-7B-Instruct`：通义千问系列
+  - `THUDM/glm-4-9b-chat`：智谱 GLM 系列
+  - `Pro/Qwen/Qwen2.5-72B-Instruct`：高性能通义千问
+- **Base URL**：默认为 `https://api.siliconflow.cn`
+- **说明**：硅基流动是国内领先的 AI 推理加速平台，提供高性价比的模型服务
+- **文档**：[硅基流动 API 文档](https://docs.siliconflow.cn/cn/userguide/introduction)
+
+#### 5. 魔搭社区
+
+- **API Key 获取**：访问 [魔搭社区 API-KEY](https://modelscope.cn/my/myaccesstoken)
+- **推荐模型**：
+  - `qwen-turbo`：通义千问 Turbo
+  - `qwen-plus`：通义千问 Plus
+  - `qwen-max`：通义千问 Max
+- **Base URL**：默认为 `https://dashscope.aliyuncs.com`
+- **说明**：魔搭社区是阿里云推出的模型即服务平台，提供丰富的国产大模型
+- **文档**：[魔搭社区 API 文档](https://modelscope.cn/docs/model-service/API-Inference/intro)
 
 ### 全局设置
 
@@ -290,7 +315,7 @@ graph TD
 
 ## 🗺️ 未来规划
 
-- [ ] 支持更多 AI 模型（如国内大模型）
+- [x] 支持更多 AI 模型（已支持硅基流动、魔搭社区等国内大模型）
 - [ ] 增加语音输入/输出功能
 - [ ] 支持上传医学影像
 - [ ] 优化移动端体验
