@@ -118,20 +118,37 @@
               </a-col>
             </a-row>
             <a-row :gutter="8">
-              <a-col :span="16">
-                <a-form-item label="模型名称">
-                  <a-select v-model:value="localImageRecognition.model" show-search placeholder="选择支持图片识别的模型">
-                    <a-select-option value="Pro/Qwen/Qwen2-VL-72B-Instruct">Qwen2-VL-72B-Instruct</a-select-option>
-                    <a-select-option value="Pro/Qwen/Qwen2-VL-7B-Instruct">Qwen2-VL-7B-Instruct</a-select-option>
-                    <a-select-option value="OpenGVLab/InternVL2-26B">InternVL2-26B</a-select-option>
-                    <a-select-option value="OpenGVLab/InternVL2-8B">InternVL2-8B</a-select-option>
-                    <a-select-option value="stepfun-ai/GOT-OCR2_0">GOT-OCR2_0</a-select-option>
-                  </a-select>
+              <a-col :span="12">
+                <a-form-item label="模型名称（可手动输入）">
+                  <a-input v-model:value="localImageRecognition.model" placeholder="Pro/Qwen/Qwen2-VL-72B-Instruct" />
                 </a-form-item>
               </a-col>
-              <a-col :span="8">
+              <a-col :span="12">
+                <a-form-item label="选择模型">
+                  <div style="display:flex; gap:8px; align-items: flex-start;">
+                    <a-select
+                      style="flex:1; min-width: 0;"
+                      v-model:value="localImageRecognition.model"
+                      :options="imageModelOptions"
+                      show-search
+                      :loading="loadingImageModel"
+                      placeholder="点击右侧按钮加载模型列表"
+                      :dropdown-match-select-width="false"
+                    />
+                    <a-button :loading="loadingImageModel" style="flex-shrink: 0;" @click="loadImageModels">加载模型</a-button>
+                  </div>
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row :gutter="8">
+              <a-col :span="12">
                 <a-form-item label="自定义 Base URL">
                   <a-input v-model:value="localImageRecognition.baseUrl" placeholder="留空使用默认" />
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item label="测试连接">
+                  <a-button :loading="testingImageAPI" @click="testImageAPI" block>测试图像识别API</a-button>
                 </a-form-item>
               </a-col>
             </a-row>
@@ -152,6 +169,7 @@ import { useConsultStore } from '../store'
 import { useGlobalStore } from '../store/global'
 import { message } from 'ant-design-vue'
 import { listModels } from '../api/models'
+import { recognizeImageWithSiliconFlow } from '../api/imageRecognition'
 
 const store = useConsultStore()
 const global = useGlobalStore()
@@ -192,6 +210,9 @@ const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
 const localImageRecognition = ref(JSON.parse(JSON.stringify(global.imageRecognition || {})))
 const modelOptions = ref({})
 const loadingModel = ref({})
+const imageModelOptions = ref([])
+const loadingImageModel = ref(false)
+const testingImageAPI = ref(false)
 
 watch(
   () => props.open,
@@ -201,6 +222,9 @@ watch(
       consultDoctors.value = JSON.parse(JSON.stringify(store.doctors))
       localSettings.value = JSON.parse(JSON.stringify(store.settings))
       localImageRecognition.value = JSON.parse(JSON.stringify(global.imageRecognition || {}))
+      imageModelOptions.value = []
+      loadingImageModel.value = false
+      testingImageAPI.value = false
     }
   }
 )
@@ -296,6 +320,54 @@ function renderConsultDoctor({ item }) {
       )
     ]
   )
+}
+
+async function loadImageModels() {
+  if (!localImageRecognition.value.apiKey) {
+    message.warning('请先填写 API Key')
+    return
+  }
+  loadingImageModel.value = true
+  try {
+    const options = await listModels(
+      localImageRecognition.value.provider,
+      localImageRecognition.value.apiKey,
+      localImageRecognition.value.baseUrl
+    )
+    imageModelOptions.value = options
+    message.success('图像识别模型列表已加载')
+  } catch (e) {
+    message.error(`加载图像识别模型失败：${e?.message || e}`)
+  } finally {
+    loadingImageModel.value = false
+  }
+}
+
+async function testImageAPI() {
+  if (!localImageRecognition.value.apiKey) {
+    message.warning('请先填写 API Key')
+    return
+  }
+  if (!localImageRecognition.value.model) {
+    message.warning('请先选择模型')
+    return
+  }
+  testingImageAPI.value = true
+  try {
+    const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+    await recognizeImageWithSiliconFlow({
+      apiKey: localImageRecognition.value.apiKey,
+      baseUrl: localImageRecognition.value.baseUrl,
+      model: localImageRecognition.value.model,
+      prompt: '请描述这张图片',
+      imageBase64: testImage
+    })
+    message.success('API 测试成功，配置正常')
+  } catch (e) {
+    message.error(`API 测试失败：${e?.message || e}`)
+  } finally {
+    testingImageAPI.value = false
+  }
 }
 
 function onSave() {

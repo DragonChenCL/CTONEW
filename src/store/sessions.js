@@ -96,7 +96,7 @@ export const useSessionsStore = defineStore('sessions', {
       saveData(id, {
         settings: undefined,
         doctors: undefined,
-        patientCase: { name: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' },
+        patientCase: { name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' },
         workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
         discussionHistory: [],
         finalSummary: { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
@@ -137,13 +137,20 @@ export const useSessionsStore = defineStore('sessions', {
         if (payload.workflow) consult.workflow = payload.workflow
         if (payload.discussionHistory) consult.discussionHistory = payload.discussionHistory
         if (payload.finalSummary) consult.finalSummary = payload.finalSummary
+        consult.lastRoundVotes = Array.isArray(payload.lastRoundVotes) ? payload.lastRoundVotes : []
       } else {
         consult.settings = consult.settings // keep defaults
-        consult.doctors = consult.doctors // keep defaults
-        consult.setPatientCase({ name: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' })
+        const sanitizedDoctors = (consult.doctors || []).map((d) => ({
+          ...d,
+          status: 'active',
+          votes: 0
+        }))
+        consult.doctors = sanitizedDoctors
+        consult.setPatientCase({ name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' })
         consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
         consult.finalSummary = { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
+        consult.lastRoundVotes = []
       }
     },
     saveSnapshotFromConsult() {

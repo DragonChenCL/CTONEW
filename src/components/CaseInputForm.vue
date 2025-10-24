@@ -2,12 +2,21 @@
   <a-card title="病例输入" :bordered="false">
     <a-form :model="form" layout="vertical" @finish="onSubmit">
       <a-row :gutter="16">
-        <a-col :span="12">
+        <a-col :span="8">
           <a-form-item label="患者名称" name="name" :rules="[{ required: true, message: '请输入患者名称' }]">
             <a-input v-model:value="form.name" placeholder="张三" />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
+        <a-col :span="8">
+          <a-form-item label="性别" name="gender">
+            <a-select v-model:value="form.gender" placeholder="请选择性别">
+              <a-select-option value="male">男</a-select-option>
+              <a-select-option value="female">女</a-select-option>
+              <a-select-option value="other">其他</a-select-option>
+            </a-select>
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
           <a-form-item label="年龄" name="age">
             <a-input-number v-model:value="form.age" :min="0" :max="150" placeholder="请输入年龄" style="width: 100%" />
           </a-form-item>
@@ -69,6 +78,7 @@ const global = useGlobalStore()
 
 const form = reactive({
   name: store.patientCase.name,
+  gender: store.patientCase.gender,
   age: store.patientCase.age,
   pastHistory: store.patientCase.pastHistory,
   currentProblem: store.patientCase.currentProblem,
