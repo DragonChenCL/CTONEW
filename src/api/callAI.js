@@ -26,6 +26,10 @@ export async function callAI(doctor, fullPrompt, historyForProvider) {
       return callAnthropic({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
     case 'gemini':
       return callGemini({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
+    case 'siliconflow':
+      return callSiliconFlow({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
+    case 'modelscope':
+      return callModelScope({ apiKey, model, fullPrompt, history: historyForProvider, baseUrl })
     default:
       throw new Error('Unsupported AI provider')
   }
@@ -112,4 +116,54 @@ async function callGemini({ apiKey, model, fullPrompt, history, baseUrl }) {
     res.data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('\n') ||
     ''
   )
+}
+
+async function callSiliconFlow({ apiKey, model, fullPrompt, history, baseUrl }) {
+  const messages = [
+    { role: 'system', content: fullPrompt.system },
+    ...history
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user', content: fullPrompt.user }
+  ]
+  const root = normalizeBaseUrl(baseUrl, 'https://api.siliconflow.cn')
+  const url = wrapUrlForDev(`${root}/v1/chat/completions`)
+  const res = await axios.post(
+    url,
+    { model, messages, temperature: 0.7 },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  )
+  const choice = res.data?.choices?.[0]
+  const content = choice?.message?.content || choice?.text
+  return (Array.isArray(content) ? content.join('\n') : content || res.data?.output_text || '').trim()
+}
+
+async function callModelScope({ apiKey, model, fullPrompt, history, baseUrl }) {
+  const messages = [
+    { role: 'system', content: fullPrompt.system },
+    ...history
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user', content: fullPrompt.user }
+  ]
+  const root = normalizeBaseUrl(baseUrl, 'https://dashscope.aliyuncs.com')
+  const url = wrapUrlForDev(`${root}/compatible-mode/v1/chat/completions`)
+  const res = await axios.post(
+    url,
+    { model, messages, temperature: 0.7 },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  )
+  const choice = res.data?.choices?.[0]
+  const content = choice?.message?.content || choice?.text
+  return (Array.isArray(content) ? content.join('\n') : content || res.data?.output_text || '').trim()
 }

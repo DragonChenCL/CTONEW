@@ -12,6 +12,18 @@ const props = defineProps({
   doctors: { type: Array, default: () => [] }
 })
 
+const providerLabelMap = {
+  openai: 'OpenAI规范',
+  anthropic: 'Anthropic规范',
+  gemini: 'Gemini规范',
+  siliconflow: '硅基流动',
+  modelscope: '魔搭社区'
+}
+
+function resolveProviderLabel(value) {
+  return providerLabelMap[value] || value
+}
+
 function renderItem({ item }) {
   const color = item.status === 'active' ? 'green' : 'gray'
   const nameNode = h(
@@ -19,7 +31,7 @@ function renderItem({ item }) {
     { style: { color, textDecoration: item.status === 'eliminated' ? 'line-through' : 'none' } },
     item.name
   )
-  const desc = `${item.provider} • ${item.model}`
+  const desc = `${resolveProviderLabel(item.provider)} • ${item.model}`
   return h(
     'div',
     { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' } },
