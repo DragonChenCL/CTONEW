@@ -12,12 +12,12 @@
     </a-layout-header>
     <a-layout>
       <a-layout-content style="padding: 16px;">
-        <a-row :gutter="16">
+        <a-row :gutter="16" align="stretch">
           <a-col :span="16">
-            <DiscussionPanel />
+            <DiscussionPanel class="discussion-panel-host" />
           </a-col>
           <a-col :span="8">
-            <StatusPanel @open-settings="openSettings" />
+            <StatusPanel class="status-panel-host" @open-settings="openSettings" />
           </a-col>
         </a-row>
       </a-layout-content>
@@ -78,4 +78,12 @@ onBeforeUnmount(() => {
 
 <style>
 html, body, #app { height: 100%; }
+
+.discussion-panel-host,
+.status-panel-host {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <a-card title="状态面板" :bordered="false">
+  <a-card title="状态面板" :bordered="false" class="status-panel-card">
     <a-descriptions
       size="small"
       bordered
@@ -202,6 +202,13 @@ function resetAll() {
     votes: 0,
   }));
   store.discussionHistory = [];
+  store.lastRoundVotes = [];
+  store.patientCase = {
+    name: "",
+    age: null,
+    pastHistory: "",
+    currentProblem: "",
+  };
   store.finalSummary = {
     status: "idle",
     doctorId: null,
@@ -257,5 +264,18 @@ function resetAll() {
   margin-bottom: 12px;
   color: #595959;
   font-size: 13px;
+}
+
+.status-panel-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.status-panel-card :deep(.ant-card-body) {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
 }
 </style>
