@@ -46,9 +46,33 @@ function saveGlobalDoctors(list) {
   localStorage.setItem(GLOBAL_DOCTORS_KEY, JSON.stringify(list || []))
 }
 
+const IMAGE_RECOGNITION_KEY = 'global_image_recognition_config'
+
+function loadImageRecognitionConfig() {
+  try {
+    const raw = localStorage.getItem(IMAGE_RECOGNITION_KEY)
+    if (raw) {
+      return JSON.parse(raw)
+    }
+  } catch (e) {}
+  return {
+    enabled: false,
+    provider: 'siliconflow',
+    model: 'Pro/Qwen/Qwen2-VL-72B-Instruct',
+    apiKey: '',
+    baseUrl: '',
+    prompt: '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。'
+  }
+}
+
+function saveImageRecognitionConfig(config) {
+  localStorage.setItem(IMAGE_RECOGNITION_KEY, JSON.stringify(config))
+}
+
 export const useGlobalStore = defineStore('global', {
   state: () => ({
-    doctors: loadGlobalDoctors()
+    doctors: loadGlobalDoctors(),
+    imageRecognition: loadImageRecognitionConfig()
   }),
   actions: {
     setDoctors(list) {
@@ -64,6 +88,20 @@ export const useGlobalStore = defineStore('global', {
       }))
       this.doctors = sanitized
       saveGlobalDoctors(sanitized)
+    },
+    setImageRecognition(config) {
+      const payload = {
+        enabled: !!config?.enabled,
+        provider: config?.provider || 'siliconflow',
+        model: config?.model || 'Pro/Qwen/Qwen2-VL-72B-Instruct',
+        apiKey: config?.apiKey || '',
+        baseUrl: config?.baseUrl || '',
+        prompt:
+          config?.prompt ||
+          '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。'
+      }
+      this.imageRecognition = payload
+      saveImageRecognitionConfig(payload)
     }
   }
 })

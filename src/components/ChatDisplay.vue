@@ -131,12 +131,16 @@ function initials(name) {
 
 <style scoped>
 .chat-display {
-  flex: 1;
-  min-height: 0;
+  height: 100%;
   overflow-y: auto;
   padding: 12px;
   background: linear-gradient(180deg, #f9fbff 0%, #f6f9ff 100%);
   border-radius: 8px 8px 0 0;
+  scrollbar-width: thin;
+}
+
+.chat-display::-webkit-scrollbar {
+  width: 6px;
 }
 .chat-item {
   animation: fadeInUp 0.25s ease;

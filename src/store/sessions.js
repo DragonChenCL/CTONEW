@@ -96,7 +96,7 @@ export const useSessionsStore = defineStore('sessions', {
       saveData(id, {
         settings: undefined,
         doctors: undefined,
-        patientCase: { name: '', age: null, pastHistory: '', currentProblem: '' },
+        patientCase: { name: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' },
         workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
         discussionHistory: [],
         finalSummary: { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
@@ -140,7 +140,7 @@ export const useSessionsStore = defineStore('sessions', {
       } else {
         consult.settings = consult.settings // keep defaults
         consult.doctors = consult.doctors // keep defaults
-        consult.setPatientCase({ name: '', age: null, pastHistory: '', currentProblem: '' })
+        consult.setPatientCase({ name: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' })
         consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
         consult.finalSummary = { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }

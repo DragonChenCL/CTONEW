@@ -11,12 +11,12 @@
       </div>
     </a-layout-header>
     <a-layout>
-      <a-layout-content style="padding: 16px;">
-        <a-row :gutter="16" align="stretch">
-          <a-col :span="16">
+      <a-layout-content style="padding: 16px; height: calc(100vh - 64px); overflow: hidden;">
+        <a-row :gutter="16" align="stretch" style="height: 100%;">
+          <a-col :span="16" style="height: 100%;">
             <DiscussionPanel class="discussion-panel-host" />
           </a-col>
-          <a-col :span="8">
+          <a-col :span="8" style="height: 100%;">
             <StatusPanel class="status-panel-host" @open-settings="openSettings" />
           </a-col>
         </a-row>
@@ -85,5 +85,26 @@ html, body, #app { height: 100%; }
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8c8c8c;
 }
 </style>
