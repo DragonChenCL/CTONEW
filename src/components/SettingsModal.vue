@@ -54,12 +54,42 @@
                   </a-col>
                 </a-row>
                 <a-form-item label="自定义提示词（可选）">
-                  <a-textarea v-model:value="element.customPrompt" rows="2" />
+                  <div style="display:flex; gap:8px; margin-bottom: 8px;">
+                    <a-select
+                      v-model:value="selectedPreset[element.id]"
+                      :options="presetPromptOptions"
+                      style="flex:1;"
+                      placeholder="选择预设提示词"
+                      allow-clear
+                      @change="(value) => handlePresetSelect(element, value)"
+                    />
+                  </div>
+                  <a-textarea v-model:value="element.customPrompt" rows="2" placeholder="可手动输入或选择上方预设提示词" />
                 </a-form-item>
               </a-card>
             </template>
           </draggable>
           <a-button type="dashed" block @click="addDoctor">+ 添加医生</a-button>
+        </a-space>
+      </a-tab-pane>
+      <a-tab-pane key="presets" tab="医生预设提示词">
+        <a-space direction="vertical" style="width: 100%">
+          <a-alert type="info" show-icon message="医生预设提示词" description="预设各主要科室医生的提示词模板，可在医生配置中快速引用并继续编辑。" />
+          <draggable v-model="localPresetPrompts" item-key="id" handle=".drag-handle">
+            <template #item="{ element, index }">
+              <a-card :title="element.name || '未命名预设'" size="small" :extra="presetExtraActions(index)" style="margin-bottom: 8px;">
+                <a-form layout="vertical">
+                  <a-form-item label="预设名称">
+                    <a-input v-model:value="element.name" placeholder="如：心血管内科医生" />
+                  </a-form-item>
+                  <a-form-item label="提示词内容">
+                    <a-textarea v-model:value="element.prompt" rows="4" placeholder="撰写该科室医生的提示词" />
+                  </a-form-item>
+                </a-form>
+              </a-card>
+            </template>
+          </draggable>
+          <a-button type="dashed" block @click="addPreset">+ 添加预设提示词</a-button>
         </a-space>
       </a-tab-pane>
       <a-tab-pane key="session" tab="问诊医生">
@@ -235,6 +265,8 @@ const consultDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
 
 const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
 const localImageRecognition = ref(JSON.parse(JSON.stringify(global.imageRecognition || {})))
+const localPresetPrompts = ref(JSON.parse(JSON.stringify(global.presetPrompts || [])))
+const selectedPreset = ref({})
 const modelOptions = ref({})
 const loadingModel = ref({})
 const imageModelOptions = ref([])
@@ -253,6 +285,8 @@ watch(
         maxConcurrent: 1,
         ...JSON.parse(JSON.stringify(global.imageRecognition || {}))
       }
+      localPresetPrompts.value = JSON.parse(JSON.stringify(global.presetPrompts || []))
+      selectedPreset.value = {}
       imageModelOptions.value = []
       loadingImageModel.value = false
       testingImageAPI.value = false
@@ -261,14 +295,66 @@ watch(
   }
 )
 
+const presetPromptOptions = computed(() => {
+  return (localPresetPrompts.value || []).map((p) => ({
+    label: p.name || '未命名预设',
+    value: p.id
+  }))
+})
+
 function addDoctor() {
-  const id = `doc-${Date.now()}`
+  const id = `doc-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
   localDoctors.value.push({ id, name: '', provider: 'openai', model: 'gpt-4o-mini', apiKey: '', baseUrl: '', customPrompt: '' })
 }
 
 function removeDoctor(idx) {
+  const target = localDoctors.value[idx]
+  if (target) {
+    const copy = { ...selectedPreset.value }
+    delete copy[target.id]
+    selectedPreset.value = copy
+  }
   localDoctors.value.splice(idx, 1)
 }
+
+function handlePresetSelect(doctor, presetId) {
+  if (!presetId) {
+    const copy = { ...selectedPreset.value }
+    delete copy[doctor?.id]
+    selectedPreset.value = copy
+    return
+  }
+  const preset = (localPresetPrompts.value || []).find((p) => p.id === presetId)
+  if (!preset) {
+    message.warning('所选预设不存在')
+    return
+  }
+  doctor.customPrompt = preset.prompt || ''
+  message.success(`已应用预设提示词：${preset.name || '未命名预设'}`)
+  const copy = { ...selectedPreset.value }
+  delete copy[doctor.id]
+  selectedPreset.value = copy
+}
+
+function addPreset() {
+  const id = `preset-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
+  localPresetPrompts.value.push({ id, name: '', prompt: '' })
+}
+
+function removePreset(idx) {
+  const removed = localPresetPrompts.value[idx]
+  localPresetPrompts.value.splice(idx, 1)
+  if (removed) {
+    const copy = { ...selectedPreset.value }
+    Object.keys(copy).forEach((doctorId) => {
+      if (copy[doctorId] === removed.id) {
+        delete copy[doctorId]
+      }
+    })
+    selectedPreset.value = copy
+  }
+}
+
 
 async function loadModels(element) {
   const id = element.id
@@ -298,6 +384,25 @@ function extraActions(idx) {
         AButton,
         { type: 'link', danger: true, onClick: () => removeDoctor(idx) },
         { default: () => '删除' }
+      )
+    ]
+  )
+}
+
+function presetExtraActions(idx) {
+  const AButton = resolveComponent('a-button')
+  const APopconfirm = resolveComponent('a-popconfirm')
+  return h(
+    'div',
+    { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+    [
+      h('span', { class: 'drag-handle', style: { cursor: 'move' }, title: '拖动排序' }, '⋮⋮'),
+      h(
+        APopconfirm,
+        { title: '确认删除此预设？', onConfirm: () => removePreset(idx) },
+        {
+          default: () => h(AButton, { type: 'link', danger: true }, { default: () => '删除' })
+        }
       )
     ]
   )
@@ -434,6 +539,7 @@ async function testImageAPI() {
 function onSave() {
   // 保存全局配置的医生
   global.setDoctors(localDoctors.value)
+  global.setPresetPrompts(localPresetPrompts.value)
   global.setImageRecognition(localImageRecognition.value)
   // 保存当前问诊设置与所选医生
   store.setSettings(localSettings.value)
