@@ -158,9 +158,9 @@ export const useConsultStore = defineStore('consult', {
         // 提示“正在输入...”，随后在得到回复后移除
         const typingIndex = this.discussionHistory.push({ type: 'system', content: `${doctor.name} 正在输入...` }) - 1
         const systemPrompt = doctor.customPrompt || this.settings.globalSystemPrompt
-        const fullPrompt = buildFullPrompt(systemPrompt, this.patientCase, this.discussionHistory)
+        const fullPrompt = buildFullPrompt(systemPrompt, this.patientCase, this.discussionHistory, doctor.id)
         try {
-          const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase)
+          const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase, doctor.id)
           const response = await callAI(doctor, fullPrompt, providerHistory)
 
           // 移除“正在输入...”提示
@@ -248,7 +248,7 @@ export const useConsultStore = defineStore('consult', {
           } else {
             const systemPrompt = voterDoc.customPrompt || this.settings.globalSystemPrompt
             const fullPrompt = buildVotePrompt(systemPrompt, this.patientCase, this.discussionHistory, activeDocs, voterDoc)
-            const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase)
+            const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase, voterDoc.id)
             const response = await callAI(voterDoc, fullPrompt, providerHistory)
             const parsed = parseVoteJSON(response)
             if (parsed && typeof parsed.targetDoctorId === 'string') {
@@ -316,8 +316,8 @@ export const useConsultStore = defineStore('consult', {
         if (!summarizer) return
         const usedPrompt = this.settings.summaryPrompt || '请根据完整会诊内容，以临床医生口吻输出最终总结：包含核心诊断、依据、鉴别诊断、检查建议、治疗建议、随访计划和风险提示。'
         this.finalSummary = { status: 'pending', doctorId: summarizer.id, doctorName: summarizer.name, content: '', usedPrompt }
-        const fullPrompt = buildFinalSummaryPrompt(usedPrompt, this.patientCase, this.discussionHistory)
-        const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase)
+        const fullPrompt = buildFinalSummaryPrompt(usedPrompt, this.patientCase, this.discussionHistory, summarizer.id)
+        const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase, summarizer.id)
         const response = await callAI(summarizer, fullPrompt, providerHistory)
         this.finalSummary = { status: 'ready', doctorId: summarizer.id, doctorName: summarizer.name, content: response, usedPrompt }
       } catch (e) {

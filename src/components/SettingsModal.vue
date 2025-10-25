@@ -95,7 +95,7 @@
           </a-form-item>
         </a-form>
       </a-tab-pane>
-      <a-tab-pane key="imageRecognition" tab="图像识别AI">
+      <a-tab-pane key="imageRecognition" tab="图片识别">
         <a-form layout="vertical">
           <a-form-item>
             <a-switch v-model:checked="localImageRecognition.enabled" />
@@ -104,16 +104,21 @@
           <template v-if="localImageRecognition.enabled">
             <a-alert type="info" show-icon message="使用硅基流动的图片识别API" description="请选择支持图片识别的模型，并填写相应的API Key。" style="margin-bottom: 16px;" />
             <a-row :gutter="8">
-              <a-col :span="12">
+              <a-col :span="8">
                 <a-form-item label="供应商">
                   <a-select v-model:value="localImageRecognition.provider" disabled>
                     <a-select-option value="siliconflow">硅基流动</a-select-option>
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col :span="8">
                 <a-form-item label="API Key">
                   <a-input-password v-model:value="localImageRecognition.apiKey" placeholder="sk-..." />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="最大并发识别数">
+                  <a-input-number v-model:value="localImageRecognition.maxConcurrent" :min="1" :max="10" style="width: 100%" />
                 </a-form-item>
               </a-col>
             </a-row>
@@ -147,8 +152,30 @@
                 </a-form-item>
               </a-col>
               <a-col :span="12">
-                <a-form-item label="测试连接">
-                  <a-button :loading="testingImageAPI" @click="testImageAPI" block>测试图像识别API</a-button>
+                <a-form-item label="测试工具">
+                  <div class="test-controls">
+                    <a-upload
+                      :before-upload="handleTestImageUpload"
+                      :show-upload-list="false"
+                      accept="image/*"
+                    >
+                      <a-button size="small">
+                        <template #icon>📷</template>
+                        选择测试图片
+                      </a-button>
+                    </a-upload>
+                    <a-button type="primary" :loading="testingImageAPI" @click="testImageAPI">测试图像识别API</a-button>
+                  </div>
+                  <div v-if="testImage" class="test-preview">
+                    <img :src="testImage.preview" alt="测试图片" />
+                    <div class="test-preview-info">
+                      <div class="name">{{ testImage.name }}</div>
+                      <a-button type="link" size="small" danger @click="removeTestImage">移除</a-button>
+                    </div>
+                  </div>
+                  <div class="test-tip">
+                    {{ testImage ? '将使用上传的图片进行测试' : '若未上传测试图片，将使用默认示例图片' }}
+                  </div>
                 </a-form-item>
               </a-col>
             </a-row>
@@ -213,6 +240,7 @@ const loadingModel = ref({})
 const imageModelOptions = ref([])
 const loadingImageModel = ref(false)
 const testingImageAPI = ref(false)
+const testImage = ref(null)
 
 watch(
   () => props.open,
@@ -221,10 +249,14 @@ watch(
       localDoctors.value = JSON.parse(JSON.stringify(global.doctors))
       consultDoctors.value = JSON.parse(JSON.stringify(store.doctors))
       localSettings.value = JSON.parse(JSON.stringify(store.settings))
-      localImageRecognition.value = JSON.parse(JSON.stringify(global.imageRecognition || {}))
+      localImageRecognition.value = {
+        maxConcurrent: 1,
+        ...JSON.parse(JSON.stringify(global.imageRecognition || {}))
+      }
       imageModelOptions.value = []
       loadingImageModel.value = false
       testingImageAPI.value = false
+      testImage.value = null
     }
   }
 )
@@ -343,6 +375,34 @@ async function loadImageModels() {
   }
 }
 
+async function handleTestImageUpload(file) {
+  try {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const fullData = e.target.result
+      let base64Only = ''
+      if (typeof fullData === 'string') {
+        const parts = fullData.split(',')
+        base64Only = parts.length > 1 ? parts[1] : parts[0]
+      }
+      testImage.value = {
+        name: file.name,
+        preview: fullData,
+        base64: base64Only
+      }
+      message.success(`已选择测试图片：${file.name}`)
+    }
+    reader.readAsDataURL(file)
+  } catch (err) {
+    message.error('读取图片失败')
+  }
+  return false
+}
+
+function removeTestImage() {
+  testImage.value = null
+}
+
 async function testImageAPI() {
   if (!localImageRecognition.value.apiKey) {
     message.warning('请先填写 API Key')
@@ -354,15 +414,16 @@ async function testImageAPI() {
   }
   testingImageAPI.value = true
   try {
-    const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-    await recognizeImageWithSiliconFlow({
+    const defaultTestImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+    const imageBase64 = testImage.value?.base64 || defaultTestImage
+    const result = await recognizeImageWithSiliconFlow({
       apiKey: localImageRecognition.value.apiKey,
       baseUrl: localImageRecognition.value.baseUrl,
       model: localImageRecognition.value.model,
-      prompt: '请描述这张图片',
-      imageBase64: testImage
+      prompt: localImageRecognition.value.prompt || '请描述这张图片',
+      imageBase64
     })
-    message.success('API 测试成功，配置正常')
+    message.success(`API 测试成功，识别结果：${result}`, 5)
   } catch (e) {
     message.error(`API 测试失败：${e?.message || e}`)
   } finally {
@@ -391,5 +452,38 @@ function onSave() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.test-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.test-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.test-preview img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+}
+
+.test-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.test-tip {
+  font-size: 12px;
+  color: #8c8c8c;
 }
 </style>

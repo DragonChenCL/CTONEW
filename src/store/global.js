@@ -48,21 +48,37 @@ function saveGlobalDoctors(list) {
 
 const IMAGE_RECOGNITION_KEY = 'global_image_recognition_config'
 
+function normalizeMaxConcurrent(value) {
+  const num = Number(value)
+  if (Number.isFinite(num) && num >= 1) {
+    return Math.floor(num)
+  }
+  return 1
+}
+
 function loadImageRecognitionConfig() {
-  try {
-    const raw = localStorage.getItem(IMAGE_RECOGNITION_KEY)
-    if (raw) {
-      return JSON.parse(raw)
-    }
-  } catch (e) {}
-  return {
+  const defaults = {
     enabled: false,
     provider: 'siliconflow',
     model: 'Pro/Qwen/Qwen2-VL-72B-Instruct',
     apiKey: '',
     baseUrl: '',
-    prompt: '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。'
+    prompt:
+      '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。',
+    maxConcurrent: 1
   }
+  try {
+    const raw = localStorage.getItem(IMAGE_RECOGNITION_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        ...defaults,
+        ...parsed,
+        maxConcurrent: normalizeMaxConcurrent(parsed?.maxConcurrent ?? defaults.maxConcurrent)
+      }
+    }
+  } catch (e) {}
+  return defaults
 }
 
 function saveImageRecognitionConfig(config) {
@@ -98,7 +114,8 @@ export const useGlobalStore = defineStore('global', {
         baseUrl: config?.baseUrl || '',
         prompt:
           config?.prompt ||
-          '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。'
+          '识别当前病灶相关的图片内容。请仔细观察图片中的所有细节，用专业医学术语描述图片中的病灶特征、位置、形态、颜色、大小等关键信息。如果图片中没有明显的病灶相关内容或与医疗诊断无关，请明确说明"图片内容与病灶无关"。请使用专业、严谨的语气进行描述。',
+        maxConcurrent: normalizeMaxConcurrent(config?.maxConcurrent ?? 1)
       }
       this.imageRecognition = payload
       saveImageRecognitionConfig(payload)
