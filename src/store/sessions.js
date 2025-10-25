@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useConsultStore } from './index'
+import { useGlobalStore } from './global'
 
 function nowISOString() {
   return new Date().toISOString()
@@ -41,6 +42,14 @@ function saveMeta(meta) {
 
 function saveCurrentId(id) {
   localStorage.setItem(CURRENT_KEY, id || '')
+}
+
+function sanitizeConsultDoctors(list) {
+  return (list || []).map((d) => ({
+    ...d,
+    status: d?.status || 'active',
+    votes: typeof d?.votes === 'number' ? d.votes : 0
+  }))
 }
 
 function loadCurrentId() {
@@ -96,7 +105,7 @@ export const useSessionsStore = defineStore('sessions', {
       saveData(id, {
         settings: undefined,
         doctors: undefined,
-        patientCase: { name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' },
+        patientCase: { name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] },
         workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
         discussionHistory: [],
         finalSummary: { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
@@ -130,23 +139,27 @@ export const useSessionsStore = defineStore('sessions', {
       saveCurrentId(id)
       const payload = loadData(id)
       const consult = useConsultStore()
+      const global = useGlobalStore()
       if (payload && typeof payload === 'object') {
         if (payload.settings) consult.settings = payload.settings
-        if (payload.doctors) consult.doctors = payload.doctors
+        if (payload.doctors && payload.doctors.length > 0) {
+          consult.doctors = sanitizeConsultDoctors(payload.doctors)
+        } else {
+          consult.doctors = sanitizeConsultDoctors(global.doctors || [])
+        }
         if (payload.patientCase) consult.setPatientCase(payload.patientCase)
         if (payload.workflow) consult.workflow = payload.workflow
         if (payload.discussionHistory) consult.discussionHistory = payload.discussionHistory
         if (payload.finalSummary) consult.finalSummary = payload.finalSummary
         consult.lastRoundVotes = Array.isArray(payload.lastRoundVotes) ? payload.lastRoundVotes : []
       } else {
-        consult.settings = consult.settings // keep defaults
-        const sanitizedDoctors = (consult.doctors || []).map((d) => ({
-          ...d,
-          status: 'active',
-          votes: 0
-        }))
-        consult.doctors = sanitizedDoctors
-        consult.setPatientCase({ name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '' })
+        consult.settings = consult.settings
+        let initialDoctors = sanitizeConsultDoctors(consult.doctors)
+        if (initialDoctors.length === 0) {
+          initialDoctors = sanitizeConsultDoctors(global.doctors)
+        }
+        consult.doctors = initialDoctors
+        consult.setPatientCase({ name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] })
         consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
         consult.finalSummary = { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }

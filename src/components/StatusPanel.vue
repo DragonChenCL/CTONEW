@@ -34,8 +34,8 @@
       <a-descriptions-item label="本次问题">
         <ExpandableText :text="store.patientCase.currentProblem || '—'" />
       </a-descriptions-item>
-      <a-descriptions-item v-if="store.patientCase.imageRecognitionResult" label="图片识别结果">
-        <ExpandableText :text="store.patientCase.imageRecognitionResult" />
+      <a-descriptions-item v-if="hasImageRecognitions" label="图片识别结果">
+        <ExpandableText :text="store.patientCase.imageRecognitionResult || '—'" />
       </a-descriptions-item>
     </a-descriptions>
 
@@ -142,6 +142,9 @@ const store = useConsultStore();
 const summaryOpen = ref(false);
 const exportRef = ref(null);
 
+const imageRecognitions = computed(() => store.patientCase?.imageRecognitions || []);
+const hasImageRecognitions = computed(() => (imageRecognitions.value && imageRecognitions.value.length > 0) || !!store.patientCase?.imageRecognitionResult);
+
 const phaseText = computed(() => {
   switch (store.workflow.phase) {
     case "setup":
@@ -214,6 +217,7 @@ function resetAll() {
     pastHistory: "",
     currentProblem: "",
     imageRecognitionResult: "",
+    imageRecognitions: [],
   };
   store.finalSummary = {
     status: "idle",

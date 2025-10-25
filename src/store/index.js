@@ -6,6 +6,46 @@ function delay(ms) {
   return new Promise((res) => setTimeout(res, ms))
 }
 
+function sanitizeImageRecognitions(list) {
+  if (!Array.isArray(list)) return []
+  const now = Date.now()
+  return list.map((item, idx) => {
+    const status = normalizeStatus(item)
+    return {
+      id: item?.id || `img-${now}-${idx}`,
+      name: item?.name || '',
+      dataUrl: item?.dataUrl || item?.imageUrl || '',
+      result: item?.result || '',
+      status,
+      error: item?.error || '',
+      createdAt: item?.createdAt || now,
+      raw: status === 'queued' || status === 'recognizing' ? item?.raw || '' : ''
+    }
+  })
+}
+
+function normalizeStatus(item) {
+  const status = item?.status
+  if (status === 'queued' || status === 'recognizing') return 'queued'
+  if (status === 'error') return 'error'
+  if (status === 'success') return 'success'
+  if (item?.error) return 'error'
+  if (item?.result) return 'success'
+  return 'queued'
+}
+
+function summarizeImageRecognitions(list) {
+  if (!Array.isArray(list) || !list.length) return ''
+  return list
+    .map((entry, idx) => ({ entry, idx }))
+    .filter(({ entry }) => entry.status === 'success' && entry.result)
+    .map(({ entry, idx }) => {
+      const namePart = entry.name ? `（${entry.name}）` : ''
+      return `图片${idx + 1}${namePart}: ${entry.result}`
+    })
+    .join('\n')
+}
+
 export const useConsultStore = defineStore('consult', {
   state: () => ({
     settings: {
@@ -22,7 +62,8 @@ export const useConsultStore = defineStore('consult', {
       age: null,
       pastHistory: '',
       currentProblem: '',
-      imageRecognitionResult: ''
+      imageRecognitionResult: '',
+      imageRecognitions: []
     },
     workflow: {
       phase: 'setup',
@@ -52,7 +93,20 @@ export const useConsultStore = defineStore('consult', {
       this.doctors = newDoctors
     },
     setPatientCase(caseInfo) {
-      this.patientCase = { ...this.patientCase, ...caseInfo }
+      const payload = { ...this.patientCase, ...caseInfo }
+      if (caseInfo?.imageRecognitions !== undefined) {
+        payload.imageRecognitions = sanitizeImageRecognitions(caseInfo.imageRecognitions)
+        const summary = summarizeImageRecognitions(payload.imageRecognitions)
+        if (summary) {
+          payload.imageRecognitionResult = summary
+        } else if (!payload.imageRecognitionResult) {
+          payload.imageRecognitionResult = ''
+        }
+      }
+      if (!Array.isArray(payload.imageRecognitions)) {
+        payload.imageRecognitions = []
+      }
+      this.patientCase = payload
     },
     addPatientMessage(text) {
       const content = String(text || '').trim()
