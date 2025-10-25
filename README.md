@@ -14,6 +14,13 @@
 
 AI 医疗会诊面板是一个创新的医疗会诊模拟系统，通过集成多个大语言模型（LLM）扮演不同的医生角色，实现多专家协同诊断。系统采用纯前端架构，无需后端服务器，直接在浏览器中调用各大 AI 服务商的 API。
 
+<img width="1912" height="932" alt="PixPin_2025-10-25_09-47-09" src="https://github.com/user-attachments/assets/6b7d3972-1874-4316-a616-715418b4d69e" />
+<img width="1912" height="932" alt="PixPin_2025-10-25_09-47-27" src="https://github.com/user-attachments/assets/1780ea96-8e25-4212-965c-6fe209fb794e" />
+<img width="1912" height="932" alt="PixPin_2025-10-25_09-52-58" src="https://github.com/user-attachments/assets/ca2a5e6e-1ecf-4b9c-ad8a-3a3d5e74fa05" />
+<img width="1912" height="932" alt="PixPin_2025-10-25_09-53-11" src="https://github.com/user-attachments/assets/8756fffb-2fa3-4086-b30a-c53f0acf50d6" />
+<img width="1912" height="932" alt="微信图片_2025-10-25_094650_243" src="https://github.com/user-attachments/assets/092968ef-e3d9-4433-ada1-3717978ea552" />
+
+
 ### ✨ 核心特性
 
 - 🏥 **多医生协作**：支持添加多个由不同 LLM 驱动的医生参与会诊
