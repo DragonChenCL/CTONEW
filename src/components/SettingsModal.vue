@@ -215,6 +215,41 @@
           </template>
         </a-form>
       </a-tab-pane>
+      <a-tab-pane key="importExport" tab="导入导出">
+        <a-space direction="vertical" style="width: 100%" :size="24">
+          <a-card title="导出设置" size="small">
+            <a-space direction="vertical" style="width: 100%">
+              <a-alert type="info" show-icon message="导出设置" description="选择要导出的配置项，导出为JSON文件。" />
+              <a-checkbox-group v-model:value="exportSelection" style="width: 100%">
+                <a-space direction="vertical" style="width: 100%">
+                  <a-checkbox value="doctors">医生配置</a-checkbox>
+                  <a-checkbox value="presetPrompts">医生预设提示词</a-checkbox>
+                  <a-checkbox value="settings">全局设置</a-checkbox>
+                  <a-checkbox value="imageRecognition">图片识别</a-checkbox>
+                </a-space>
+              </a-checkbox-group>
+              <a-button type="primary" @click="handleExport" :disabled="exportSelection.length === 0">
+                导出选中项
+              </a-button>
+            </a-space>
+          </a-card>
+          <a-card title="导入设置" size="small">
+            <a-space direction="vertical" style="width: 100%">
+              <a-alert type="info" show-icon message="导入设置" description="选择JSON文件导入配置。如果文件中包含某项配置，将自动导入并覆盖现有配置。" />
+              <a-upload
+                :before-upload="handleImport"
+                :show-upload-list="false"
+                accept=".json"
+              >
+                <a-button type="primary">
+                  <template #icon>📁</template>
+                  选择JSON文件导入
+                </a-button>
+              </a-upload>
+            </a-space>
+          </a-card>
+        </a-space>
+      </a-tab-pane>
     </a-tabs>
   </a-modal>
 </template>
@@ -273,6 +308,7 @@ const imageModelOptions = ref([])
 const loadingImageModel = ref(false)
 const testingImageAPI = ref(false)
 const testImage = ref(null)
+const exportSelection = ref([])
 
 watch(
   () => props.open,
@@ -291,6 +327,7 @@ watch(
       loadingImageModel.value = false
       testingImageAPI.value = false
       testImage.value = null
+      exportSelection.value = []
     }
   }
 )
@@ -534,6 +571,96 @@ async function testImageAPI() {
   } finally {
     testingImageAPI.value = false
   }
+}
+
+function handleExport() {
+  if (exportSelection.value.length === 0) {
+    message.warning('请至少选择一项要导出的配置')
+    return
+  }
+  
+  const exportData = {}
+  
+  if (exportSelection.value.includes('doctors')) {
+    exportData.doctors = localDoctors.value
+  }
+  
+  if (exportSelection.value.includes('presetPrompts')) {
+    exportData.presetPrompts = localPresetPrompts.value
+  }
+  
+  if (exportSelection.value.includes('settings')) {
+    exportData.settings = localSettings.value
+  }
+  
+  if (exportSelection.value.includes('imageRecognition')) {
+    exportData.imageRecognition = localImageRecognition.value
+  }
+  
+  const jsonStr = JSON.stringify(exportData, null, 2)
+  const blob = new Blob([jsonStr], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+  link.download = `settings-export-${timestamp}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  
+  message.success('设置已导出')
+}
+
+function handleImport(file) {
+  const reader = new FileReader()
+  
+  reader.onload = (e) => {
+    try {
+      const content = e.target.result
+      const importData = JSON.parse(content)
+      
+      let importedItems = []
+      
+      if (importData.doctors) {
+        localDoctors.value = JSON.parse(JSON.stringify(importData.doctors))
+        importedItems.push('医生配置')
+      }
+      
+      if (importData.presetPrompts) {
+        localPresetPrompts.value = JSON.parse(JSON.stringify(importData.presetPrompts))
+        importedItems.push('医生预设提示词')
+      }
+      
+      if (importData.settings) {
+        localSettings.value = { ...localSettings.value, ...importData.settings }
+        importedItems.push('全局设置')
+      }
+      
+      if (importData.imageRecognition) {
+        localImageRecognition.value = {
+          maxConcurrent: 1,
+          ...JSON.parse(JSON.stringify(importData.imageRecognition))
+        }
+        importedItems.push('图片识别')
+      }
+      
+      if (importedItems.length > 0) {
+        message.success(`已导入：${importedItems.join('、')}`)
+      } else {
+        message.warning('导入文件中没有可识别的配置项')
+      }
+    } catch (err) {
+      message.error('导入失败：文件格式不正确或内容无效')
+    }
+  }
+  
+  reader.onerror = () => {
+    message.error('读取文件失败')
+  }
+  
+  reader.readAsText(file)
+  return false
 }
 
 function onSave() {
