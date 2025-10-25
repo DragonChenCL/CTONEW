@@ -41,11 +41,11 @@
               {{ uploadedImages.length ? '继续上传图片' : '上传图片' }}
             </a-button>
           </a-upload>
-          <div v-if="recognizing" style="color: #1890ff; font-size: 12px;">
-            正在识别第 {{ recognizingNumber }} 张图片，共 {{ pendingImages.length }} 张待完成...
+          <div v-if="recognizingCount > 0" style="color: #1890ff; font-size: 12px;">
+            正在识别 {{ recognizingCount }} 张图片，队列中等待 {{ queuedCount }} 张
           </div>
-          <div v-else-if="hasPendingImages" style="color: #faad14; font-size: 12px;">
-            已加入识别队列，待识别图片 {{ pendingImages.length }} 张
+          <div v-else-if="queuedCount > 0" style="color: #faad14; font-size: 12px;">
+            已加入识别队列，待识别图片 {{ queuedCount }} 张
           </div>
           <div v-if="uploadedImages.length > 0" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
             <div v-for="(image, index) in uploadedImages" :key="index" style="border: 1px solid #d9d9d9; border-radius: 4px; padding: 8px;">
@@ -65,6 +65,9 @@
                   </div>
                   <div v-if="image.status === 'recognizing'" style="color: #1890ff; font-size: 12px;">
                     <a-spin size="small" style="margin-right: 4px;" /> 识别中...
+                  </div>
+                  <div v-else-if="image.status === 'queued'" style="color: #faad14; font-size: 12px;">
+                    <span style="margin-right: 4px;">⏳</span> 排队中，等待识别
                   </div>
                   <div v-else-if="image.status === 'success' && image.result" style="margin-top: 4px;">
                     <a-alert type="success" message="识别成功" show-icon size="small">
@@ -99,7 +102,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useConsultStore } from '../store'
 import { useGlobalStore } from '../store/global'
@@ -117,15 +120,24 @@ const form = reactive({
 })
 
 const uploadedImages = ref(initializeImages())
-const processing = ref(false)
+const processingCount = ref(0)
 
 const imageRecognitionConfig = computed(() => global.imageRecognition || {})
 const imageRecognitionEnabled = computed(() => !!imageRecognitionConfig.value?.enabled)
+const maxConcurrent = computed(() => {
+  const value = imageRecognitionConfig.value?.maxConcurrent
+  const num = Number(value)
+  if (Number.isFinite(num) && num >= 1) {
+    return Math.floor(num)
+  }
+  return 1
+})
+const queuedImages = computed(() => uploadedImages.value.filter((img) => img.status === 'queued'))
+const recognizingImages = computed(() => uploadedImages.value.filter((img) => img.status === 'recognizing'))
+const queuedCount = computed(() => queuedImages.value.length)
+const recognizingCount = computed(() => recognizingImages.value.length)
 const pendingImages = computed(() => uploadedImages.value.filter((img) => img.status === 'queued' || img.status === 'recognizing'))
 const hasPendingImages = computed(() => pendingImages.value.length > 0)
-const recognizingIndex = computed(() => uploadedImages.value.findIndex((img) => img.status === 'recognizing'))
-const recognizingNumber = computed(() => (recognizingIndex.value >= 0 ? recognizingIndex.value + 1 : 0))
-const recognizing = computed(() => recognizingIndex.value >= 0)
 
 function initializeImages() {
   const saved = Array.isArray(store.patientCase.imageRecognitions) ? store.patientCase.imageRecognitions : []
@@ -215,38 +227,43 @@ async function handleImageUpload(file) {
 }
 
 async function processQueue() {
-  if (processing.value) return
-  const next = uploadedImages.value.find((img) => img.status === 'queued')
-  if (!next) return
-  processing.value = true
-  try {
-    let current = uploadedImages.value.find((img) => img.status === 'queued')
-    while (current) {
-      current.status = 'recognizing'
-      syncCaseImageState()
-      try {
-        const result = await recognizeImageWithSiliconFlow({
-          apiKey: imageRecognitionConfig.value.apiKey,
-          baseUrl: imageRecognitionConfig.value.baseUrl,
-          model: imageRecognitionConfig.value.model,
-          prompt: imageRecognitionConfig.value.prompt,
-          imageBase64: current.raw
-        })
-        current.result = result
-        current.status = 'success'
-        current.error = ''
-        current.raw = ''
-        message.success('图片识别完成')
-      } catch (err) {
-        console.error(err)
-        current.status = 'error'
-        current.error = err?.message || '图片识别失败，请检查配置'
-      }
-      syncCaseImageState()
-      current = uploadedImages.value.find((img) => img.status === 'queued')
+  while (true) {
+    const recognizing = uploadedImages.value.filter((img) => img.status === 'recognizing')
+    const limit = maxConcurrent.value
+    if (recognizing.length >= limit) {
+      break
     }
+    const next = uploadedImages.value.find((img) => img.status === 'queued')
+    if (!next) {
+      break
+    }
+    next.status = 'recognizing'
+    syncCaseImageState()
+    processSingleImage(next)
+  }
+}
+
+async function processSingleImage(imageItem) {
+  try {
+    const result = await recognizeImageWithSiliconFlow({
+      apiKey: imageRecognitionConfig.value.apiKey,
+      baseUrl: imageRecognitionConfig.value.baseUrl,
+      model: imageRecognitionConfig.value.model,
+      prompt: imageRecognitionConfig.value.prompt,
+      imageBase64: imageItem.raw
+    })
+    imageItem.result = result
+    imageItem.status = 'success'
+    imageItem.error = ''
+    imageItem.raw = ''
+    message.success('图片识别完成')
+  } catch (err) {
+    console.error(err)
+    imageItem.status = 'error'
+    imageItem.error = err?.message || '图片识别失败，请检查配置'
   } finally {
-    processing.value = false
+    syncCaseImageState()
+    processQueue()
   }
 }
 

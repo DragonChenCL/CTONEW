@@ -1,9 +1,12 @@
-export function buildFullPrompt(systemPrompt, caseInfo, discussionHistory) {
+export function buildFullPrompt(systemPrompt, caseInfo, discussionHistory, currentDoctorId) {
   const caseText = formatCase(caseInfo)
   const historyText = discussionHistory
     .filter((m) => m.type === 'doctor' || m.type === 'patient')
     .map((m) => {
-      if (m.type === 'doctor') return `${m.doctorName}: ${m.content}`
+      if (m.type === 'doctor') {
+        const isSelf = currentDoctorId && m.doctorId === currentDoctorId
+        return isSelf ? `${m.doctorName}（你自己的发言）: ${m.content}` : `${m.doctorName}: ${m.content}`
+      }
       const patientName = caseInfo?.name ? `患者（${caseInfo.name}）` : '患者'
       return `${patientName}: ${m.content}`
     })
@@ -19,7 +22,10 @@ export function buildVotePrompt(systemPrompt, caseInfo, discussionHistory, docto
   const historyText = discussionHistory
     .filter((m) => m.type === 'doctor' || m.type === 'patient')
     .map((m) => {
-      if (m.type === 'doctor') return `${m.doctorName}: ${m.content}`
+      if (m.type === 'doctor') {
+        const isSelf = voter?.id && m.doctorId === voter.id
+        return isSelf ? `${m.doctorName}（你自己的发言）: ${m.content}` : `${m.doctorName}: ${m.content}`
+      }
       const patientName = caseInfo?.name ? `患者（${caseInfo.name}）` : '患者'
       return `${patientName}: ${m.content}`
     })
@@ -37,12 +43,15 @@ export function buildVotePrompt(systemPrompt, caseInfo, discussionHistory, docto
   return { system, user }
 }
 
-export function buildFinalSummaryPrompt(systemPrompt, caseInfo, discussionHistory) {
+export function buildFinalSummaryPrompt(systemPrompt, caseInfo, discussionHistory, summarizerId) {
   const caseText = formatCase(caseInfo)
   const historyText = discussionHistory
     .filter((m) => m.type === 'doctor' || m.type === 'patient')
     .map((m) => {
-      if (m.type === 'doctor') return `${m.doctorName}: ${m.content}`
+      if (m.type === 'doctor') {
+        const isSelf = summarizerId && m.doctorId === summarizerId
+        return isSelf ? `${m.doctorName}（你自己的发言）: ${m.content}` : `${m.doctorName}: ${m.content}`
+      }
       const patientName = caseInfo?.name ? `患者（${caseInfo.name}）` : '患者'
       return `${patientName}: ${m.content}`
     })
@@ -52,11 +61,13 @@ export function buildFinalSummaryPrompt(systemPrompt, caseInfo, discussionHistor
   return { system: systemPrompt, user }
 }
 
-export function formatHistoryForProvider(discussionHistory, caseInfo) {
+export function formatHistoryForProvider(discussionHistory, caseInfo, currentDoctorId) {
   const msgs = []
   for (const item of discussionHistory) {
     if (item.type === 'doctor') {
-      msgs.push({ role: 'assistant', content: `${item.doctorName}: ${item.content}` })
+      const isSelf = currentDoctorId && item.doctorId === currentDoctorId
+      const label = isSelf ? `${item.doctorName}（你自己的发言）` : item.doctorName
+      msgs.push({ role: 'assistant', content: `${label}: ${item.content}` })
     } else if (item.type === 'patient') {
       const patientName = caseInfo?.name ? `患者（${caseInfo.name}）` : '患者'
       msgs.push({ role: 'user', content: `${patientName}: ${item.content}` })
