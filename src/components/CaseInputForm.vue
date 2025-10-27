@@ -101,7 +101,7 @@
       </a-form-item>
       <div style="display:flex; gap: 8px;">
         <a-button type="primary" html-type="submit">开始会诊</a-button>
-        <a-button @click="openSettings">配置医生/提示词</a-button>
+        <a-button @click="openSettings">问诊设置</a-button>
       </div>
     </a-form>
   </a-card>
