@@ -46,6 +46,31 @@ function summarizeImageRecognitions(list) {
     .join('\n')
 }
 
+function sanitizeLinkedConsultations(list) {
+  if (!Array.isArray(list)) return []
+  return list
+    .map((item, idx) => {
+      if (!item) return null
+      const id = typeof item.id === 'string' && item.id ? item.id : item?.sourceId || `linked-${idx}`
+      const patientAge = item?.patientAge
+      return {
+        id,
+        sourceId: item?.sourceId || id,
+        consultationName: item?.consultationName || item?.name || `关联问诊${idx + 1}`,
+        patientName: item?.patientName || '',
+        patientGender: item?.patientGender || '',
+        patientAge: Number.isFinite(patientAge) ? patientAge : patientAge === null || patientAge === undefined ? null : Number(patientAge) || null,
+        pastHistory: item?.pastHistory || '',
+        currentProblem: item?.currentProblem || '',
+        imageRecognitionResult: item?.imageRecognitionResult || '',
+        finalSummary: item?.finalSummary || '',
+        finishedAt: item?.finishedAt || item?.finishedAt || '',
+        metadata: item?.metadata || null
+      }
+    })
+    .filter(Boolean)
+}
+
 export const useConsultStore = defineStore('consult', {
   state: () => ({
     consultationName: '',
@@ -66,6 +91,7 @@ export const useConsultStore = defineStore('consult', {
       imageRecognitionResult: '',
       imageRecognitions: []
     },
+    linkedConsultations: [],
     workflow: {
       phase: 'setup',
       currentRound: 0,
@@ -112,6 +138,32 @@ export const useConsultStore = defineStore('consult', {
         payload.imageRecognitions = []
       }
       this.patientCase = payload
+    },
+    setLinkedConsultations(list, options = {}) {
+      const { syncPatientInfo = true } = options
+      const sanitized = sanitizeLinkedConsultations(list)
+      this.linkedConsultations = sanitized
+      if (syncPatientInfo && sanitized.length > 0) {
+        const first = sanitized[0]
+        const update = {}
+        if (first.patientName !== undefined && first.patientName !== null) {
+          update.name = String(first.patientName).trim()
+        }
+        if (first.patientGender !== undefined && first.patientGender !== null) {
+          update.gender = String(first.patientGender).trim()
+        }
+        if (first.patientAge !== undefined) {
+          if (first.patientAge === null || first.patientAge === undefined || first.patientAge === '') {
+            update.age = null
+          } else {
+            const ageNumber = Number(first.patientAge)
+            update.age = Number.isFinite(ageNumber) ? ageNumber : null
+          }
+        }
+        if (Object.keys(update).length > 0) {
+          this.setPatientCase(update)
+        }
+      }
     },
     addPatientMessage(text) {
       const content = String(text || '').trim()
@@ -163,7 +215,7 @@ export const useConsultStore = defineStore('consult', {
         // 提示“正在输入...”，随后在得到回复后移除
         const typingIndex = this.discussionHistory.push({ type: 'system', content: `${doctor.name} 正在输入...` }) - 1
         const systemPrompt = doctor.customPrompt || this.settings.globalSystemPrompt
-        const fullPrompt = buildFullPrompt(systemPrompt, this.patientCase, this.discussionHistory, doctor.id)
+        const fullPrompt = buildFullPrompt(systemPrompt, this.patientCase, this.discussionHistory, doctor.id, this.linkedConsultations)
         try {
           const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase, doctor.id)
           const response = await callAI(doctor, fullPrompt, providerHistory)
@@ -252,7 +304,7 @@ export const useConsultStore = defineStore('consult', {
             reason = '模拟模式：自评其答案需进一步论证，标注自己。'
           } else {
             const systemPrompt = voterDoc.customPrompt || this.settings.globalSystemPrompt
-            const fullPrompt = buildVotePrompt(systemPrompt, this.patientCase, this.discussionHistory, activeDocs, voterDoc)
+            const fullPrompt = buildVotePrompt(systemPrompt, this.patientCase, this.discussionHistory, activeDocs, voterDoc, this.linkedConsultations)
             const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase, voterDoc.id)
             const response = await callAI(voterDoc, fullPrompt, providerHistory)
             const parsed = parseVoteJSON(response)
@@ -321,7 +373,7 @@ export const useConsultStore = defineStore('consult', {
         if (!summarizer) return
         const usedPrompt = this.settings.summaryPrompt || '请根据完整会诊内容，以临床医生口吻输出最终总结：包含核心诊断、依据、鉴别诊断、检查建议、治疗建议、随访计划和风险提示。'
         this.finalSummary = { status: 'pending', doctorId: summarizer.id, doctorName: summarizer.name, content: '', usedPrompt }
-        const fullPrompt = buildFinalSummaryPrompt(usedPrompt, this.patientCase, this.discussionHistory, summarizer.id)
+        const fullPrompt = buildFinalSummaryPrompt(usedPrompt, this.patientCase, this.discussionHistory, summarizer.id, this.linkedConsultations)
         const providerHistory = formatHistoryForProvider(this.discussionHistory, this.patientCase, summarizer.id)
         const response = await callAI(summarizer, fullPrompt, providerHistory)
         this.finalSummary = { status: 'ready', doctorId: summarizer.id, doctorName: summarizer.name, content: response, usedPrompt }

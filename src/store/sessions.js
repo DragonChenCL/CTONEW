@@ -107,6 +107,7 @@ export const useSessionsStore = defineStore('sessions', {
         settings: undefined,
         doctors: [],
         patientCase: { name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] },
+        linkedConsultations: [],
         workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
         discussionHistory: [],
         finalSummary: { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
@@ -149,6 +150,7 @@ export const useSessionsStore = defineStore('sessions', {
           consult.doctors = []
         }
         if (payload.patientCase) consult.setPatientCase(payload.patientCase)
+        consult.setLinkedConsultations(payload.linkedConsultations || [], { syncPatientInfo: false })
         if (payload.workflow) consult.workflow = payload.workflow
         if (payload.discussionHistory) consult.discussionHistory = payload.discussionHistory
         if (payload.finalSummary) consult.finalSummary = payload.finalSummary
@@ -158,6 +160,7 @@ export const useSessionsStore = defineStore('sessions', {
         consult.settings = consult.settings
         consult.doctors = []
         consult.setPatientCase({ name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] })
+        consult.setLinkedConsultations([], { syncPatientInfo: false })
         consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
         consult.finalSummary = { status: 'idle', doctorId: null, doctorName: '', content: '', usedPrompt: '' }
@@ -177,6 +180,9 @@ export const useSessionsStore = defineStore('sessions', {
       const payload = loadData(id)
       const meta = this.sessions.find((s) => s.id === id)
       return JSON.stringify({ meta, data: payload }, null, 2)
+    },
+    getSessionData(id) {
+      return loadData(id)
     }
   }
 })

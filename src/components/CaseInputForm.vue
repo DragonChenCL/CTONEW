@@ -108,7 +108,7 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useConsultStore } from '../store'
 import { useImageRecognitionQueue } from '../composables/useImageRecognitionQueue'
@@ -122,6 +122,20 @@ const form = reactive({
   pastHistory: store.patientCase.pastHistory,
   currentProblem: store.patientCase.currentProblem
 })
+
+watch(
+  () => store.patientCase,
+  (newCase) => {
+    if (newCase) {
+      form.name = newCase.name || ''
+      form.gender = newCase.gender || ''
+      form.age = newCase.age
+      form.pastHistory = newCase.pastHistory || ''
+      form.currentProblem = newCase.currentProblem || ''
+    }
+  },
+  { deep: true }
+)
 
 const {
   uploadedImages,
