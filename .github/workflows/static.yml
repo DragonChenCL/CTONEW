@@ -33,7 +33,7 @@ jobs:
 
       # 安装依赖
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # 构建
       - name: Build
