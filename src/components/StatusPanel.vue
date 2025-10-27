@@ -82,7 +82,7 @@
     </template>
 
     <div style="margin-top: 16px; display: flex; gap: 8px">
-      <a-button @click="$emit('open-settings')">配置</a-button>
+      <a-button @click="$emit('open-settings')">问诊设置</a-button>
       <a-popconfirm title="确认重置流程？" @confirm="resetAll">
         <a-button danger>重置</a-button>
       </a-popconfirm>
