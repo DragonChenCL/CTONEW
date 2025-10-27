@@ -108,14 +108,12 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, watch } from 'vue'
+import { reactive } from 'vue'
 import { message } from 'ant-design-vue'
 import { useConsultStore } from '../store'
-import { useGlobalStore } from '../store/global'
-import { recognizeImageWithSiliconFlow } from '../api/imageRecognition'
+import { useImageRecognitionQueue } from '../composables/useImageRecognitionQueue'
 
 const store = useConsultStore()
-const global = useGlobalStore()
 
 const form = reactive({
   name: store.patientCase.name,
@@ -125,63 +123,23 @@ const form = reactive({
   currentProblem: store.patientCase.currentProblem
 })
 
-const uploadedImages = ref(initializeImages())
-const processingCount = ref(0)
-
-const imageRecognitionConfig = computed(() => global.imageRecognition || {})
-const imageRecognitionEnabled = computed(() => !!imageRecognitionConfig.value?.enabled)
-const maxConcurrent = computed(() => {
-  const value = imageRecognitionConfig.value?.maxConcurrent
-  const num = Number(value)
-  if (Number.isFinite(num) && num >= 1) {
-    return Math.floor(num)
+const {
+  uploadedImages,
+  imageRecognitionEnabled,
+  recognizingCount,
+  queuedCount,
+  hasPendingImages,
+  queueImageFile,
+  removeImage: removeImageFromQueue
+} = useImageRecognitionQueue({
+  onStatusChange(image, status, payload = {}) {
+    if (status === 'success') {
+      message.success('图片识别完成')
+    } else if (status === 'error') {
+      message.error(payload.error || image.error || '图片识别失败，请检查配置')
+    }
   }
-  return 1
 })
-const queuedImages = computed(() => uploadedImages.value.filter((img) => img.status === 'queued'))
-const recognizingImages = computed(() => uploadedImages.value.filter((img) => img.status === 'recognizing'))
-const queuedCount = computed(() => queuedImages.value.length)
-const recognizingCount = computed(() => recognizingImages.value.length)
-const pendingImages = computed(() => uploadedImages.value.filter((img) => img.status === 'queued' || img.status === 'recognizing'))
-const hasPendingImages = computed(() => pendingImages.value.length > 0)
-
-function initializeImages() {
-  const saved = Array.isArray(store.patientCase.imageRecognitions) ? store.patientCase.imageRecognitions : []
-  if (saved.length > 0) {
-    return saved.map((item, idx) => ({
-      id: item.id || `saved-${idx}`,
-      name: item.name || '',
-      dataUrl: item.dataUrl || item.imageUrl || '',
-      result: item.result || '',
-      status: normalizeStatus(item.status, item.result),
-      error: item.error || '',
-      raw: item.raw || '',
-      createdAt: item.createdAt || Date.now()
-    }))
-  }
-  if (store.patientCase.imageRecognitionResult) {
-    return [
-      {
-        id: `legacy-${Date.now()}`,
-        name: '',
-        dataUrl: '',
-        result: store.patientCase.imageRecognitionResult,
-        status: 'success',
-        error: '',
-        raw: '',
-        createdAt: Date.now()
-      }
-    ]
-  }
-  return []
-}
-
-function normalizeStatus(status, result) {
-  if (status === 'queued' || status === 'recognizing') return 'queued'
-  if (status === 'error') return 'error'
-  if (status === 'success') return 'success'
-  return result ? 'success' : 'queued'
-}
 
 function sanitizeImages() {
   return (uploadedImages.value || []).map((item) => ({
@@ -196,81 +154,19 @@ function sanitizeImages() {
   }))
 }
 
-function syncCaseImageState() {
-  store.setPatientCase({ imageRecognitions: sanitizeImages() })
-}
-
-if (uploadedImages.value.length) {
-  syncCaseImageState()
-}
-
 async function handleImageUpload(file) {
   if (!imageRecognitionEnabled.value) {
     message.warning('请先在设置中启用图像识别功能')
     return false
   }
   try {
-    const base64 = await toBase64(file)
-    const item = {
-      id: `img-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      name: file.name,
-      dataUrl: base64.full,
-      result: '',
-      status: 'queued',
-      error: '',
-      raw: base64.raw,
-      createdAt: Date.now()
-    }
-    uploadedImages.value.push(item)
-    syncCaseImageState()
-    processQueue()
+    await queueImageFile(file)
     message.success(`已添加图片：${file.name}`)
   } catch (err) {
     console.error(err)
-    message.error('读取图片失败，请重试')
+    message.error(err?.message || '读取图片失败，请重试')
   }
   return false
-}
-
-async function processQueue() {
-  while (true) {
-    const recognizing = uploadedImages.value.filter((img) => img.status === 'recognizing')
-    const limit = maxConcurrent.value
-    if (recognizing.length >= limit) {
-      break
-    }
-    const next = uploadedImages.value.find((img) => img.status === 'queued')
-    if (!next) {
-      break
-    }
-    next.status = 'recognizing'
-    syncCaseImageState()
-    processSingleImage(next)
-  }
-}
-
-async function processSingleImage(imageItem) {
-  try {
-    const result = await recognizeImageWithSiliconFlow({
-      apiKey: imageRecognitionConfig.value.apiKey,
-      baseUrl: imageRecognitionConfig.value.baseUrl,
-      model: imageRecognitionConfig.value.model,
-      prompt: imageRecognitionConfig.value.prompt,
-      imageBase64: imageItem.raw
-    })
-    imageItem.result = result
-    imageItem.status = 'success'
-    imageItem.error = ''
-    imageItem.raw = ''
-    message.success('图片识别完成')
-  } catch (err) {
-    console.error(err)
-    imageItem.status = 'error'
-    imageItem.error = err?.message || '图片识别失败，请检查配置'
-  } finally {
-    syncCaseImageState()
-    processQueue()
-  }
 }
 
 function removeImage(index) {
@@ -280,25 +176,7 @@ function removeImage(index) {
     message.warning('当前图片正在识别中，无法删除')
     return
   }
-  uploadedImages.value.splice(index, 1)
-  syncCaseImageState()
-}
-
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const full = reader.result
-      let raw = ''
-      if (typeof full === 'string') {
-        const parts = full.split(',')
-        raw = parts.length > 1 ? parts[1] : parts[0]
-      }
-      resolve({ full, raw })
-    }
-    reader.onerror = (e) => reject(e)
-    reader.readAsDataURL(file)
-  })
+  removeImageFromQueue(index)
 }
 
 function onSubmit() {
