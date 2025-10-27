@@ -12,6 +12,12 @@
     </a-layout-header>
     <a-layout>
       <a-layout-content style="padding: 16px; height: calc(100vh - 64px); overflow: hidden;">
+        <a-alert
+          type="warning"
+          show-icon
+          message="【本内容仅供参考，身体不适尽早就医】"
+          style="margin-bottom: 12px;"
+        />
         <a-row :gutter="16" align="stretch" style="height: 100%;">
           <a-col :span="16" style="height: 100%;">
             <DiscussionPanel class="discussion-panel-host" />
