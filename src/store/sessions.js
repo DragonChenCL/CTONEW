@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { useConsultStore } from './index'
-import { useGlobalStore } from './global'
 
 function nowISOString() {
   return new Date().toISOString()
@@ -104,7 +103,7 @@ export const useSessionsStore = defineStore('sessions', {
       saveMeta(this.sessions)
       saveData(id, {
         settings: undefined,
-        doctors: undefined,
+        doctors: [],
         patientCase: { name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] },
         workflow: { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false },
         discussionHistory: [],
@@ -139,13 +138,12 @@ export const useSessionsStore = defineStore('sessions', {
       saveCurrentId(id)
       const payload = loadData(id)
       const consult = useConsultStore()
-      const global = useGlobalStore()
       if (payload && typeof payload === 'object') {
         if (payload.settings) consult.settings = payload.settings
-        if (payload.doctors && payload.doctors.length > 0) {
+        if (payload.doctors !== undefined) {
           consult.doctors = sanitizeConsultDoctors(payload.doctors)
         } else {
-          consult.doctors = sanitizeConsultDoctors(global.doctors || [])
+          consult.doctors = []
         }
         if (payload.patientCase) consult.setPatientCase(payload.patientCase)
         if (payload.workflow) consult.workflow = payload.workflow
@@ -154,11 +152,7 @@ export const useSessionsStore = defineStore('sessions', {
         consult.lastRoundVotes = Array.isArray(payload.lastRoundVotes) ? payload.lastRoundVotes : []
       } else {
         consult.settings = consult.settings
-        let initialDoctors = sanitizeConsultDoctors(consult.doctors)
-        if (initialDoctors.length === 0) {
-          initialDoctors = sanitizeConsultDoctors(global.doctors)
-        }
-        consult.doctors = initialDoctors
+        consult.doctors = []
         consult.setPatientCase({ name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] })
         consult.workflow = { phase: 'setup', currentRound: 0, roundsWithoutElimination: 0, activeTurn: null, turnQueue: [], paused: false }
         consult.discussionHistory = []
