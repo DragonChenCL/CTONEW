@@ -122,7 +122,7 @@ export const useConsultStore = defineStore('consult', {
         throw new Error('请填写患者名称和本次问题')
       }
       if (!this.doctors || this.doctors.length === 0) {
-        throw new Error('请为当前问诊添加至少一位医生')
+        throw new Error('请添加至少一位医生后再开始会诊（可在设置中添加）')
       }
       // 新的问诊开始时，所有医生恢复为在席状态，清空票数，并取消暂停
       this.doctors = this.doctors.map((d) => ({ ...d, status: 'active', votes: 0 }))
