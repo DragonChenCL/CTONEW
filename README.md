@@ -9,6 +9,9 @@
 [![Ant Design Vue](https://img.shields.io/badge/Ant%20Design%20Vue-4.2.1-blue.svg)](https://antdv.com/)
 
 </div>
+## 📖 项目预览
+
+https://dragonchencl.github.io/ai-doctor/
 
 ## 📖 项目简介
 
