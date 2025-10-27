@@ -38,6 +38,31 @@
           <a-list :data-source="consultDoctors" :renderItem="renderConsultDoctor" />
         </a-space>
       </a-tab-pane>
+      <a-tab-pane key="linkedConsultations" tab="关联问诊">
+        <a-space direction="vertical" style="width: 100%">
+          <a-alert type="info" show-icon message="关联问诊" description="可以从已结束的问诊中选择关联问诊，作为医生诊断的参考上下文。多选的问诊必须具有相同的患者名称、性别、年龄。" />
+          <div style="display:flex; gap: 8px;">
+            <a-select 
+              v-model:value="selectedLinkedIds" 
+              mode="multiple"
+              :options="finishedConsultationOptions" 
+              style="flex:1;" 
+              placeholder="选择已结束的问诊（可多选）"
+              :filter-option="filterLinkedOption"
+              @change="handleLinkedChange"
+            />
+            <a-popconfirm title="确认清空关联问诊？" @confirm="clearLinkedConsultations">
+              <a-button danger>清空</a-button>
+            </a-popconfirm>
+          </div>
+          <div v-if="linkedConsultations.length > 0" style="margin-top: 12px;">
+            <a-list :data-source="linkedConsultations" :renderItem="renderLinkedConsultation" />
+          </div>
+          <div v-else style="color: #8c8c8c; text-align: center; padding: 20px;">
+            暂无关联问诊
+          </div>
+        </a-space>
+      </a-tab-pane>
     </a-tabs>
   </a-modal>
 </template>
@@ -66,7 +91,10 @@ watch(open, (v) => emit('update:open', v))
 const localConsultationName = ref(store.consultationName || '')
 const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
 const consultDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
+const linkedConsultations = ref(JSON.parse(JSON.stringify(store.linkedConsultations || [])))
 const selectedToAdd = ref(null)
+const selectedLinkedIds = ref((store.linkedConsultations || []).map((item) => item.sourceId || item.id?.replace(/^linked-/, '') || item.id))
+const previousValidLinkedIds = ref([...selectedLinkedIds.value])
 
 watch(
   () => props.open,
@@ -75,7 +103,10 @@ watch(
       localConsultationName.value = store.consultationName || ''
       localSettings.value = JSON.parse(JSON.stringify(store.settings))
       consultDoctors.value = JSON.parse(JSON.stringify(store.doctors))
+      linkedConsultations.value = JSON.parse(JSON.stringify(store.linkedConsultations || []))
       selectedToAdd.value = null
+      selectedLinkedIds.value = (store.linkedConsultations || []).map((item) => item.sourceId || item.id?.replace(/^linked-/, '') || item.id)
+      previousValidLinkedIds.value = [...selectedLinkedIds.value]
     }
   }
 )
@@ -148,10 +179,168 @@ function resolveProviderLabel(value) {
   return providerOptionsMap.value[value] || value
 }
 
+function formatDateTime(value) {
+  if (!value) return '未知时间'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function previewText(text, maxLength = 80) {
+  if (!text) return '无'
+  const normalized = String(text).replace(/\s+/g, ' ').trim()
+  if (!normalized) return '无'
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}…` : normalized
+}
+
+const finishedConsultationOptions = computed(() => {
+  const currentId = sessions.currentId
+  return sessions.sessions
+    .filter((s) => s.status === '已结束' && s.id !== currentId)
+    .map((s) => ({
+      label: `${s.name}（${formatDateTime(s.updatedAt)}）`,
+      value: s.id
+    }))
+})
+
+function filterLinkedOption(input, option) {
+  return option.label.toLowerCase().includes(input.toLowerCase())
+}
+
+function handleLinkedChange(selectedIds) {
+  if (!selectedIds || !selectedIds.length) {
+    linkedConsultations.value = []
+    previousValidLinkedIds.value = []
+    return
+  }
+
+  const ids = Array.isArray(selectedIds) ? [...selectedIds] : []
+  const newLinked = []
+  const genderMap = { male: '男', female: '女', other: '其他' }
+  
+  for (const id of ids) {
+    const data = sessions.getSessionData(id)
+    if (!data) {
+      message.error('读取关联问诊数据失败，请确认该问诊已保存。')
+      selectedLinkedIds.value = [...previousValidLinkedIds.value]
+      return
+    }
+
+    const sessionMeta = sessions.sessions.find((s) => s.id === id)
+    const consultName = sessionMeta?.name || data?.consultationName || '未命名问诊'
+    const patientCase = data?.patientCase || {}
+    const patientName = patientCase.name || ''
+    const patientGender = patientCase.gender || ''
+    const patientAge = patientCase.age
+    const pastHistory = patientCase.pastHistory || ''
+    const currentProblem = patientCase.currentProblem || ''
+    const imageRecognitionResult = patientCase.imageRecognitionResult || ''
+    const finalSummary = data?.finalSummary?.content || ''
+    const finishedAt = sessionMeta?.updatedAt || ''
+    
+    newLinked.push({
+      id: `linked-${id}`,
+      sourceId: id,
+      consultationName: consultName,
+      patientName,
+      patientGender,
+      patientAge,
+      pastHistory,
+      currentProblem,
+      imageRecognitionResult,
+      finalSummary,
+      finishedAt,
+      metadata: { sessionMeta, patientCase }
+    })
+  }
+
+  if (newLinked.length === 0) {
+    linkedConsultations.value = []
+    previousValidLinkedIds.value = []
+    return
+  }
+
+  const firstPatient = newLinked[0]
+  const firstName = firstPatient.patientName || ''
+  const firstGender = firstPatient.patientGender || ''
+  const firstAge = firstPatient.patientAge
+
+  for (let i = 1; i < newLinked.length; i++) {
+    const item = newLinked[i]
+    const name = item.patientName || ''
+    const gender = item.patientGender || ''
+    const age = item.patientAge
+
+    if (name !== firstName || gender !== firstGender || age !== firstAge) {
+      const firstAgeStr = firstAge !== null && firstAge !== undefined ? `${firstAge}岁` : '未知'
+      const itemAgeStr = age !== null && age !== undefined ? `${age}岁` : '未知'
+      message.error(`无法添加：多选的问诊必须具有相同的患者名称、性别、年龄。\n第1个：${firstName || '未知'}，${genderMap[firstGender] || firstGender || '未知'}，${firstAgeStr}\n第${i + 1}个：${name || '未知'}，${genderMap[gender] || gender || '未知'}，${itemAgeStr}`)
+      selectedLinkedIds.value = [...previousValidLinkedIds.value]
+      return
+    }
+  }
+
+  linkedConsultations.value = newLinked
+  previousValidLinkedIds.value = [...ids]
+}
+
+function clearLinkedConsultations() {
+  linkedConsultations.value = []
+  selectedLinkedIds.value = []
+  previousValidLinkedIds.value = []
+}
+
+function removeLinkedConsultation(id) {
+  const target = linkedConsultations.value.find((item) => item.id === id)
+  linkedConsultations.value = linkedConsultations.value.filter((item) => item.id !== id)
+  const sourceId = target?.sourceId || id.replace(/^linked-/, '')
+  selectedLinkedIds.value = selectedLinkedIds.value.filter((sid) => sid !== sourceId)
+  handleLinkedChange([...selectedLinkedIds.value])
+}
+
+function renderLinkedConsultation({ item }) {
+  const AButton = resolveComponent('a-button')
+  const genderMap = { male: '男', female: '女', other: '其他' }
+  const patientInfo = [
+    item.patientName || '未知',
+    genderMap[item.patientGender] || item.patientGender || '未知',
+    item.patientAge !== null && item.patientAge !== undefined ? `${item.patientAge}岁` : '年龄未知'
+  ].join('，')
+
+  const details = []
+  if (item.pastHistory) details.push(`既往疾病: ${previewText(item.pastHistory, 50)}`)
+  if (item.currentProblem) details.push(`本次问题: ${previewText(item.currentProblem, 50)}`)
+  if (item.imageRecognitionResult) details.push(`图片识别: ${previewText(item.imageRecognitionResult, 50)}`)
+  if (item.finalSummary) details.push(`最终答案: ${previewText(item.finalSummary, 50)}`)
+  
+  return h(
+    'div',
+    { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid #f0f0f0' } },
+    [
+      h('div', { style: { flex: 1, minWidth: 0 } }, [
+        h('div', { style: { fontWeight: '600', marginBottom: '4px', fontSize: '14px' } }, item.consultationName),
+        h('div', { style: { color: '#595959', fontSize: '12px', marginBottom: '4px' } }, `患者：${patientInfo}`),
+        h('div', { style: { color: '#8c8c8c', fontSize: '11px' } }, `既往疾病：${previewText(item.pastHistory, 60)}`),
+        h('div', { style: { color: '#8c8c8c', fontSize: '11px' } }, `本次问题：${previewText(item.currentProblem, 60)}`),
+        h('div', { style: { color: '#8c8c8c', fontSize: '11px' } }, `图片识别：${previewText(item.imageRecognitionResult, 60)}`),
+        h('div', { style: { color: '#8c8c8c', fontSize: '11px' } }, `最终答案：${previewText(item.finalSummary, 80)}`),
+        item.finishedAt ? h('div', { style: { color: '#bfbfbf', fontSize: '11px', marginTop: '4px' } }, `完成：${formatDateTime(item.finishedAt)}`) : null
+      ]),
+      h(
+        AButton,
+        { type: 'link', danger: true, size: 'small', onClick: () => removeLinkedConsultation(item.id) },
+        { default: () => '移除' }
+      )
+    ]
+  )
+}
+
 function onSave() {
   store.setConsultationName(localConsultationName.value)
   store.setSettings(localSettings.value)
   store.setDoctors(consultDoctors.value)
+  store.setLinkedConsultations(linkedConsultations.value)
   if (localConsultationName.value.trim() && sessions.currentId) {
     sessions.rename(sessions.currentId, localConsultationName.value.trim())
   }
