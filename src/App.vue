@@ -4,6 +4,7 @@
       <div style="display:flex; align-items:center; gap:8px;">
         <img :src="logoUrl" alt="AI 医疗会诊面板 Logo" style="width:28px; height:28px;" />
         <span style="font-size:18px; font-weight:600;">AI 医疗会诊面板</span>
+        <span style="font-size:18px; font-weight:600;color:#ff4d4f;">【本内容仅供参考，身体不适尽早就医】</span>
       </div>
       <div style="display:flex; gap:8px;">
         <a-button @click="openSessions">问诊列表</a-button>
@@ -12,12 +13,12 @@
     </a-layout-header>
     <a-layout>
       <a-layout-content style="padding: 16px; height: calc(100vh - 64px); overflow: hidden;">
-        <a-alert
+        <!-- <a-alert
           type="warning"
           show-icon
           message="【本内容仅供参考，身体不适尽早就医】"
           style="margin-bottom: 12px;"
-        />
+        /> -->
         <a-row :gutter="16" align="stretch" style="height: 100%;">
           <a-col :span="16" style="height: 100%;">
             <DiscussionPanel class="discussion-panel-host" />

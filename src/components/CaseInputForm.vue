@@ -1,11 +1,11 @@
 <template>
   <a-card title="病例输入" :bordered="false" class="case-input-card">
-    <a-alert
+    <!-- <a-alert
       type="warning"
       show-icon
       message="【本内容仅供参考，身体不适尽早就医】"
       style="margin-bottom: 16px;"
-    />
+    /> -->
     <a-form :model="form" layout="vertical" @finish="onSubmit">
       <a-row :gutter="16">
         <a-col :span="8">
