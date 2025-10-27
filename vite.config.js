@@ -55,6 +55,7 @@ function devProxyPlugin() {
 
 export default defineConfig({
   plugins: [vue(), devProxyPlugin()],
+  base: './',
   server: {
     port: 5173
   }
