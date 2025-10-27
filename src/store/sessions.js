@@ -98,10 +98,12 @@ export const useSessionsStore = defineStore('sessions', {
     createNew(name) {
       const id = `consult-${Date.now()}`
       const ts = nowISOString()
-      const meta = { id, name: name || '未命名问诊', status: '配置/准备', createdAt: ts, updatedAt: ts }
+      const initialName = typeof name === 'string' && name.trim() ? name.trim() : '未命名问诊'
+      const meta = { id, name: initialName, status: '配置/准备', createdAt: ts, updatedAt: ts }
       this.sessions.unshift(meta)
       saveMeta(this.sessions)
       saveData(id, {
+        consultationName: initialName,
         settings: undefined,
         doctors: [],
         patientCase: { name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] },
@@ -139,6 +141,7 @@ export const useSessionsStore = defineStore('sessions', {
       const payload = loadData(id)
       const consult = useConsultStore()
       if (payload && typeof payload === 'object') {
+        consult.consultationName = typeof payload.consultationName === 'string' ? payload.consultationName : ''
         if (payload.settings) consult.settings = payload.settings
         if (payload.doctors !== undefined) {
           consult.doctors = sanitizeConsultDoctors(payload.doctors)
@@ -151,6 +154,7 @@ export const useSessionsStore = defineStore('sessions', {
         if (payload.finalSummary) consult.finalSummary = payload.finalSummary
         consult.lastRoundVotes = Array.isArray(payload.lastRoundVotes) ? payload.lastRoundVotes : []
       } else {
+        consult.consultationName = ''
         consult.settings = consult.settings
         consult.doctors = []
         consult.setPatientCase({ name: '', gender: '', age: null, pastHistory: '', currentProblem: '', imageRecognitionResult: '', imageRecognitions: [] })

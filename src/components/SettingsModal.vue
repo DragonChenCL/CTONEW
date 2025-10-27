@@ -1,254 +1,285 @@
 <template>
   <a-modal v-model:open="open" title="设置" width="900px" @ok="onSave" ok-text="保存">
     <a-tabs>
-      <a-tab-pane key="doctors" tab="医生配置">
-        <a-space direction="vertical" style="width: 100%">
-          <a-alert type="info" show-icon message="提示" description="可添加多个由不同 LLM 驱动的医生。未填写 API Key 将使用模拟回复。" />
-          <draggable v-model="localDoctors" item-key="id" handle=".drag-handle">
-            <template #item="{ element, index }">
-              <a-card :title="element.name || '未命名医生'" size="small" :extra="extraActions(index)" style="margin-bottom: 8px;">
+      <a-tab-pane key="global" tab="全局设置">
+        <a-tabs tab-position="left">
+          <a-tab-pane key="doctors" tab="医生配置">
+            <a-space direction="vertical" style="width: 100%">
+              <a-alert type="info" show-icon message="提示" description="可添加多个由不同 LLM 驱动的医生。未填写 API Key 将使用模拟回复。" />
+              <draggable v-model="localDoctors" item-key="id" handle=".drag-handle">
+                <template #item="{ element, index }">
+                  <a-card :title="element.name || '未命名医生'" size="small" :extra="extraActions(index)" style="margin-bottom: 8px;">
+                    <a-row :gutter="8">
+                      <a-col :span="6">
+                        <a-form-item label="医生名称">
+                          <a-input v-model:value="element.name" placeholder="Dr. GPT-4" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="6">
+                        <a-form-item label="供应商">
+                          <a-select v-model:value="element.provider" style="width: 200px" :options="providerOptions" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="6">
+                        <a-form-item label="API Key">
+                          <a-input-password v-model:value="element.apiKey" placeholder="sk-..." />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="6">
+                        <a-form-item label="自定义 Base URL">
+                          <a-input v-model:value="element.baseUrl" placeholder="留空使用默认" />
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                    <a-row :gutter="8">
+                      <a-col :span="12">
+                        <a-form-item label="模型名称（可手动输入）">
+                          <a-input v-model:value="element.model" placeholder="gpt-4o-mini / claude-3-haiku-20240307 / gemini-1.5-flash" />
+                        </a-form-item>
+                      </a-col>
+                      <a-col :span="12">
+                        <a-form-item label="选择模型">
+                          <div style="display:flex; gap:8px; align-items: flex-start;">
+                            <a-select
+                              class="model-select"
+                              style="flex:1; min-width: 0;"
+                              v-model:value="element.model"
+                              :options="modelOptions[element.id] || []"
+                              show-search
+                              :loading="loadingModel[element.id]"
+                              placeholder="点击右侧按钮加载模型列表"
+                              :dropdown-match-select-width="false"
+                            />
+                            <a-button :loading="loadingModel[element.id]" style="flex-shrink: 0;" @click="() => loadModels(element)">加载模型</a-button>
+                          </div>
+                        </a-form-item>
+                      </a-col>
+                    </a-row>
+                    <a-form-item label="自定义提示词（可选）">
+                      <div style="display:flex; gap:8px; margin-bottom: 8px;">
+                        <a-select
+                          v-model:value="selectedPreset[element.id]"
+                          :options="presetPromptOptions"
+                          style="flex:1;"
+                          placeholder="选择预设提示词"
+                          allow-clear
+                          @change="(value) => handlePresetSelect(element, value)"
+                        />
+                      </div>
+                      <a-textarea v-model:value="element.customPrompt" rows="2" placeholder="可手动输入或选择上方预设提示词" />
+                    </a-form-item>
+                  </a-card>
+                </template>
+              </draggable>
+              <a-button type="dashed" block @click="addDoctor">+ 添加医生</a-button>
+            </a-space>
+          </a-tab-pane>
+          <a-tab-pane key="presets" tab="医生预设提示词">
+            <a-space direction="vertical" style="width: 100%">
+              <a-alert type="info" show-icon message="医生预设提示词" description="预设各主要科室医生的提示词模板，可在医生配置中快速引用并继续编辑。" />
+              <draggable v-model="localPresetPrompts" item-key="id" handle=".drag-handle">
+                <template #item="{ element, index }">
+                  <a-card :title="element.name || '未命名预设'" size="small" :extra="presetExtraActions(index)" style="margin-bottom: 8px;">
+                    <a-form layout="vertical">
+                      <a-form-item label="预设名称">
+                        <a-input v-model:value="element.name" placeholder="如：心血管内科医生" />
+                      </a-form-item>
+                      <a-form-item label="提示词内容">
+                        <a-textarea v-model:value="element.prompt" rows="4" placeholder="撰写该科室医生的提示词" />
+                      </a-form-item>
+                    </a-form>
+                  </a-card>
+                </template>
+              </draggable>
+              <a-button type="dashed" block @click="addPreset">+ 添加预设提示词</a-button>
+            </a-space>
+          </a-tab-pane>
+          <a-tab-pane key="globalSettings" tab="全局参数">
+            <a-form layout="vertical">
+              <a-form-item label="全局系统提示词">
+                <a-textarea v-model:value="localSettings.globalSystemPrompt" rows="6" />
+              </a-form-item>
+              <a-form-item label="最终总结提示词（默认）">
+                <a-textarea v-model:value="localSettings.summaryPrompt" rows="6" />
+              </a-form-item>
+              <a-form-item label="发言顺序">
+                <a-radio-group v-model:value="localSettings.turnOrder">
+                  <a-radio value="random">随机</a-radio>
+                  <a-radio value="custom">自定义（按医生列表顺序）</a-radio>
+                </a-radio-group>
+              </a-form-item>
+              <a-form-item label="连续未标注不太准确的最大轮数">
+                <a-input-number v-model:value="localSettings.maxRoundsWithoutElimination" :min="1" />
+              </a-form-item>
+            </a-form>
+          </a-tab-pane>
+          <a-tab-pane key="imageRecognition" tab="图片识别">
+            <a-form layout="vertical">
+              <a-form-item>
+                <a-switch v-model:checked="localImageRecognition.enabled" />
+                <span style="margin-left: 8px;">启用图像识别功能</span>
+              </a-form-item>
+              <template v-if="localImageRecognition.enabled">
+                <a-alert type="info" show-icon message="使用硅基流动的图片识别API" description="请选择支持图片识别的模型，并填写相应的API Key。" style="margin-bottom: 16px;" />
                 <a-row :gutter="8">
-                  <a-col :span="6">
-                    <a-form-item label="医生名称">
-                      <a-input v-model:value="element.name" placeholder="Dr. GPT-4" />
-                    </a-form-item>
-                  </a-col>
-                  <a-col :span="6">
+                  <a-col :span="8">
                     <a-form-item label="供应商">
-                      <a-select v-model:value="element.provider" style="width: 200px" :options="providerOptions" />
+                      <a-select v-model:value="localImageRecognition.provider" disabled>
+                        <a-select-option value="siliconflow">硅基流动</a-select-option>
+                      </a-select>
                     </a-form-item>
                   </a-col>
-                  <a-col :span="6">
+                  <a-col :span="8">
                     <a-form-item label="API Key">
-                      <a-input-password v-model:value="element.apiKey" placeholder="sk-..." />
+                      <a-input-password v-model:value="localImageRecognition.apiKey" placeholder="sk-..." />
                     </a-form-item>
                   </a-col>
-                  <a-col :span="6">
-                    <a-form-item label="自定义 Base URL">
-                      <a-input v-model:value="element.baseUrl" placeholder="留空使用默认" />
+                  <a-col :span="8">
+                    <a-form-item label="最大并发识别数">
+                      <a-input-number v-model:value="localImageRecognition.maxConcurrent" :min="1" :max="10" style="width: 100%" />
                     </a-form-item>
                   </a-col>
                 </a-row>
                 <a-row :gutter="8">
                   <a-col :span="12">
                     <a-form-item label="模型名称（可手动输入）">
-                      <a-input v-model:value="element.model" placeholder="gpt-4o-mini / claude-3-haiku-20240307 / gemini-1.5-flash" />
+                      <a-input v-model:value="localImageRecognition.model" placeholder="Pro/Qwen/Qwen2-VL-72B-Instruct" />
                     </a-form-item>
                   </a-col>
                   <a-col :span="12">
                     <a-form-item label="选择模型">
                       <div style="display:flex; gap:8px; align-items: flex-start;">
                         <a-select
-                          class="model-select"
                           style="flex:1; min-width: 0;"
-                          v-model:value="element.model"
-                          :options="modelOptions[element.id] || []"
+                          v-model:value="localImageRecognition.model"
+                          :options="imageModelOptions"
                           show-search
-                          :loading="loadingModel[element.id]"
+                          :loading="loadingImageModel"
                           placeholder="点击右侧按钮加载模型列表"
                           :dropdown-match-select-width="false"
                         />
-                        <a-button :loading="loadingModel[element.id]" style="flex-shrink: 0;" @click="() => loadModels(element)">加载模型</a-button>
+                        <a-button :loading="loadingImageModel" style="flex-shrink: 0;" @click="loadImageModels">加载模型</a-button>
                       </div>
                     </a-form-item>
                   </a-col>
                 </a-row>
-                <a-form-item label="自定义提示词（可选）">
-                  <div style="display:flex; gap:8px; margin-bottom: 8px;">
-                    <a-select
-                      v-model:value="selectedPreset[element.id]"
-                      :options="presetPromptOptions"
-                      style="flex:1;"
-                      placeholder="选择预设提示词"
-                      allow-clear
-                      @change="(value) => handlePresetSelect(element, value)"
-                    />
-                  </div>
-                  <a-textarea v-model:value="element.customPrompt" rows="2" placeholder="可手动输入或选择上方预设提示词" />
+                <a-row :gutter="8">
+                  <a-col :span="12">
+                    <a-form-item label="自定义 Base URL">
+                      <a-input v-model:value="localImageRecognition.baseUrl" placeholder="留空使用默认" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="12">
+                    <a-form-item label="测试工具">
+                      <div class="test-controls">
+                        <a-upload
+                          :before-upload="handleTestImageUpload"
+                          :show-upload-list="false"
+                          accept="image/*"
+                        >
+                          <a-button size="small">
+                            <template #icon>📷</template>
+                            选择测试图片
+                          </a-button>
+                        </a-upload>
+                        <a-button type="primary" :loading="testingImageAPI" @click="testImageAPI">测试图像识别API</a-button>
+                      </div>
+                      <div v-if="testImage" class="test-preview">
+                        <img :src="testImage.preview" alt="测试图片" />
+                        <div class="test-preview-info">
+                          <div class="name">{{ testImage.name }}</div>
+                          <a-button type="link" size="small" danger @click="removeTestImage">移除</a-button>
+                        </div>
+                      </div>
+                      <div class="test-tip">
+                        {{ testImage ? '将使用上传的图片进行测试' : '若未上传测试图片，将使用默认示例图片' }}
+                      </div>
+                    </a-form-item>
+                  </a-col>
+                </a-row>
+                <a-form-item label="图像识别提示词">
+                  <a-textarea v-model:value="localImageRecognition.prompt" rows="4" placeholder="描述图像识别的需求..." />
                 </a-form-item>
-              </a-card>
-            </template>
-          </draggable>
-          <a-button type="dashed" block @click="addDoctor">+ 添加医生</a-button>
-        </a-space>
-      </a-tab-pane>
-      <a-tab-pane key="presets" tab="医生预设提示词">
-        <a-space direction="vertical" style="width: 100%">
-          <a-alert type="info" show-icon message="医生预设提示词" description="预设各主要科室医生的提示词模板，可在医生配置中快速引用并继续编辑。" />
-          <draggable v-model="localPresetPrompts" item-key="id" handle=".drag-handle">
-            <template #item="{ element, index }">
-              <a-card :title="element.name || '未命名预设'" size="small" :extra="presetExtraActions(index)" style="margin-bottom: 8px;">
-                <a-form layout="vertical">
-                  <a-form-item label="预设名称">
-                    <a-input v-model:value="element.name" placeholder="如：心血管内科医生" />
-                  </a-form-item>
-                  <a-form-item label="提示词内容">
-                    <a-textarea v-model:value="element.prompt" rows="4" placeholder="撰写该科室医生的提示词" />
-                  </a-form-item>
-                </a-form>
-              </a-card>
-            </template>
-          </draggable>
-          <a-button type="dashed" block @click="addPreset">+ 添加预设提示词</a-button>
-        </a-space>
-      </a-tab-pane>
-      <a-tab-pane key="session" tab="问诊医生">
-        <a-space direction="vertical" style="width: 100%">
-          <a-alert type="info" show-icon message="当前问诊医生" description="从全局配置中选择医生加入本次问诊。“在席/不太准确”状态仅属于当前问诊。" />
-          <div style="display:flex; gap: 8px;">
-            <a-select v-model:value="selectedToAdd" :options="globalDoctorOptions" style="flex:1;" placeholder="选择要添加的医生" />
-            <a-button type="primary" @click="addToConsult">添加</a-button>
-            <a-button @click="addAllToConsult">添加全部</a-button>
-            <a-popconfirm title="确认清空当前问诊医生？" @confirm="clearConsultDoctors">
-              <a-button danger>清空</a-button>
-            </a-popconfirm>
-          </div>
-          <a-list :data-source="consultDoctors" :renderItem="renderConsultDoctor" />
-        </a-space>
-      </a-tab-pane>
-      <a-tab-pane key="global" tab="全局设置">
-        <a-form layout="vertical">
-          <a-form-item label="全局系统提示词">
-            <a-textarea v-model:value="localSettings.globalSystemPrompt" rows="6" />
-          </a-form-item>
-          <a-form-item label="最终总结提示词（默认）">
-            <a-textarea v-model:value="localSettings.summaryPrompt" rows="6" />
-          </a-form-item>
-          <a-form-item label="发言顺序">
-            <a-radio-group v-model:value="localSettings.turnOrder">
-              <a-radio value="random">随机</a-radio>
-              <a-radio value="custom">自定义（按医生列表顺序）</a-radio>
-            </a-radio-group>
-          </a-form-item>
-          <a-form-item label="连续未标注不太准确的最大轮数">
-            <a-input-number v-model:value="localSettings.maxRoundsWithoutElimination" :min="1" />
-          </a-form-item>
-        </a-form>
-      </a-tab-pane>
-      <a-tab-pane key="imageRecognition" tab="图片识别">
-        <a-form layout="vertical">
-          <a-form-item>
-            <a-switch v-model:checked="localImageRecognition.enabled" />
-            <span style="margin-left: 8px;">启用图像识别功能</span>
-          </a-form-item>
-          <template v-if="localImageRecognition.enabled">
-            <a-alert type="info" show-icon message="使用硅基流动的图片识别API" description="请选择支持图片识别的模型，并填写相应的API Key。" style="margin-bottom: 16px;" />
-            <a-row :gutter="8">
-              <a-col :span="8">
-                <a-form-item label="供应商">
-                  <a-select v-model:value="localImageRecognition.provider" disabled>
-                    <a-select-option value="siliconflow">硅基流动</a-select-option>
-                  </a-select>
-                </a-form-item>
-              </a-col>
-              <a-col :span="8">
-                <a-form-item label="API Key">
-                  <a-input-password v-model:value="localImageRecognition.apiKey" placeholder="sk-..." />
-                </a-form-item>
-              </a-col>
-              <a-col :span="8">
-                <a-form-item label="最大并发识别数">
-                  <a-input-number v-model:value="localImageRecognition.maxConcurrent" :min="1" :max="10" style="width: 100%" />
-                </a-form-item>
-              </a-col>
-            </a-row>
-            <a-row :gutter="8">
-              <a-col :span="12">
-                <a-form-item label="模型名称（可手动输入）">
-                  <a-input v-model:value="localImageRecognition.model" placeholder="Pro/Qwen/Qwen2-VL-72B-Instruct" />
-                </a-form-item>
-              </a-col>
-              <a-col :span="12">
-                <a-form-item label="选择模型">
-                  <div style="display:flex; gap:8px; align-items: flex-start;">
-                    <a-select
-                      style="flex:1; min-width: 0;"
-                      v-model:value="localImageRecognition.model"
-                      :options="imageModelOptions"
-                      show-search
-                      :loading="loadingImageModel"
-                      placeholder="点击右侧按钮加载模型列表"
-                      :dropdown-match-select-width="false"
-                    />
-                    <a-button :loading="loadingImageModel" style="flex-shrink: 0;" @click="loadImageModels">加载模型</a-button>
-                  </div>
-                </a-form-item>
-              </a-col>
-            </a-row>
-            <a-row :gutter="8">
-              <a-col :span="12">
-                <a-form-item label="自定义 Base URL">
-                  <a-input v-model:value="localImageRecognition.baseUrl" placeholder="留空使用默认" />
-                </a-form-item>
-              </a-col>
-              <a-col :span="12">
-                <a-form-item label="测试工具">
-                  <div class="test-controls">
-                    <a-upload
-                      :before-upload="handleTestImageUpload"
-                      :show-upload-list="false"
-                      accept="image/*"
-                    >
-                      <a-button size="small">
-                        <template #icon>📷</template>
-                        选择测试图片
-                      </a-button>
-                    </a-upload>
-                    <a-button type="primary" :loading="testingImageAPI" @click="testImageAPI">测试图像识别API</a-button>
-                  </div>
-                  <div v-if="testImage" class="test-preview">
-                    <img :src="testImage.preview" alt="测试图片" />
-                    <div class="test-preview-info">
-                      <div class="name">{{ testImage.name }}</div>
-                      <a-button type="link" size="small" danger @click="removeTestImage">移除</a-button>
-                    </div>
-                  </div>
-                  <div class="test-tip">
-                    {{ testImage ? '将使用上传的图片进行测试' : '若未上传测试图片，将使用默认示例图片' }}
-                  </div>
-                </a-form-item>
-              </a-col>
-            </a-row>
-            <a-form-item label="图像识别提示词">
-              <a-textarea v-model:value="localImageRecognition.prompt" rows="4" placeholder="描述图像识别的需求..." />
-            </a-form-item>
-          </template>
-        </a-form>
-      </a-tab-pane>
-      <a-tab-pane key="importExport" tab="导入导出">
-        <a-space direction="vertical" style="width: 100%" :size="24">
-          <a-card title="导出设置" size="small">
-            <a-space direction="vertical" style="width: 100%">
-              <a-alert type="info" show-icon message="导出设置" description="选择要导出的配置项，导出为JSON文件。" />
-              <a-checkbox-group v-model:value="exportSelection" style="width: 100%">
+              </template>
+            </a-form>
+          </a-tab-pane>
+          <a-tab-pane key="importExport" tab="导入导出">
+            <a-space direction="vertical" style="width: 100%" :size="24">
+              <a-card title="导出设置" size="small">
                 <a-space direction="vertical" style="width: 100%">
-                  <a-checkbox value="doctors">医生配置</a-checkbox>
-                  <a-checkbox value="presetPrompts">医生预设提示词</a-checkbox>
-                  <a-checkbox value="settings">全局设置</a-checkbox>
-                  <a-checkbox value="imageRecognition">图片识别</a-checkbox>
+                  <a-alert type="info" show-icon message="导出设置" description="选择要导出的配置项，导出为JSON文件。" />
+                  <a-checkbox-group v-model:value="exportSelection" style="width: 100%">
+                    <a-space direction="vertical" style="width: 100%">
+                      <a-checkbox value="doctors">医生配置</a-checkbox>
+                      <a-checkbox value="presetPrompts">医生预设提示词</a-checkbox>
+                      <a-checkbox value="settings">全局设置</a-checkbox>
+                      <a-checkbox value="imageRecognition">图片识别</a-checkbox>
+                    </a-space>
+                  </a-checkbox-group>
+                  <a-button type="primary" @click="handleExport" :disabled="exportSelection.length === 0">
+                    导出选中项
+                  </a-button>
                 </a-space>
-              </a-checkbox-group>
-              <a-button type="primary" @click="handleExport" :disabled="exportSelection.length === 0">
-                导出选中项
-              </a-button>
+              </a-card>
+              <a-card title="导入设置" size="small">
+                <a-space direction="vertical" style="width: 100%">
+                  <a-alert type="info" show-icon message="导入设置" description="选择JSON文件导入配置。如果文件中包含某项配置，将自动导入并覆盖现有配置。" />
+                  <a-upload
+                    :before-upload="handleImport"
+                    :show-upload-list="false"
+                    accept=".json"
+                  >
+                    <a-button type="primary">
+                      <template #icon>📁</template>
+                      选择JSON文件导入
+                    </a-button>
+                  </a-upload>
+                </a-space>
+              </a-card>
             </a-space>
-          </a-card>
-          <a-card title="导入设置" size="small">
+          </a-tab-pane>
+        </a-tabs>
+      </a-tab-pane>
+      <a-tab-pane key="current" tab="当前设置">
+        <a-tabs tab-position="left">
+          <a-tab-pane key="consultSettings" tab="问诊参数">
+            <a-form layout="vertical">
+              <a-alert type="info" show-icon message="问诊参数" description="配置当前问诊的名称与提示词。" style="margin-bottom: 16px;" />
+              <a-form-item label="问诊名称">
+                <a-input v-model:value="localConsultationName" placeholder="请输入问诊名称" />
+              </a-form-item>
+              <a-form-item label="当前会诊系统提示词">
+                <a-textarea v-model:value="localSettings.globalSystemPrompt" rows="6" />
+              </a-form-item>
+              <a-form-item label="最终总结提示词">
+                <a-textarea v-model:value="localSettings.summaryPrompt" rows="6" />
+              </a-form-item>
+              <a-form-item label="发言顺序">
+                <a-radio-group v-model:value="localSettings.turnOrder">
+                  <a-radio value="random">随机</a-radio>
+                  <a-radio value="custom">自定义（按医生列表顺序）</a-radio>
+                </a-radio-group>
+              </a-form-item>
+              <a-form-item label="连续未标注不太准确的最大轮数">
+                <a-input-number v-model:value="localSettings.maxRoundsWithoutElimination" :min="1" />
+              </a-form-item>
+            </a-form>
+          </a-tab-pane>
+          <a-tab-pane key="consultDoctors" tab="问诊医生">
             <a-space direction="vertical" style="width: 100%">
-              <a-alert type="info" show-icon message="导入设置" description="选择JSON文件导入配置。如果文件中包含某项配置，将自动导入并覆盖现有配置。" />
-              <a-upload
-                :before-upload="handleImport"
-                :show-upload-list="false"
-                accept=".json"
-              >
-                <a-button type="primary">
-                  <template #icon>📁</template>
-                  选择JSON文件导入
-                </a-button>
-              </a-upload>
+              <a-alert type="info" show-icon message="当前问诊医生" description="从全局配置中选择医生加入本次问诊。&#8220;在席/不太准确&#8221;状态仅属于当前问诊。" />
+              <div style="display:flex; gap: 8px;">
+                <a-select v-model:value="selectedToAdd" :options="globalDoctorOptions" style="flex:1;" placeholder="选择要添加的医生" />
+                <a-button type="primary" @click="addToConsult">添加</a-button>
+                <a-button @click="addAllToConsult">添加全部</a-button>
+                <a-popconfirm title="确认清空当前问诊医生？" @confirm="clearConsultDoctors">
+                  <a-button danger>清空</a-button>
+                </a-popconfirm>
+              </div>
+              <a-list :data-source="consultDoctors" :renderItem="renderConsultDoctor" />
             </a-space>
-          </a-card>
-        </a-space>
+          </a-tab-pane>
+        </a-tabs>
       </a-tab-pane>
     </a-tabs>
   </a-modal>
@@ -259,12 +290,14 @@ import { ref, watch, h, resolveComponent, computed } from 'vue'
 import draggable from 'vuedraggable'
 import { useConsultStore } from '../store'
 import { useGlobalStore } from '../store/global'
+import { useSessionsStore } from '../store/sessions'
 import { message } from 'ant-design-vue'
 import { listModels } from '../api/models'
 import { recognizeImageWithSiliconFlow } from '../api/imageRecognition'
 
 const store = useConsultStore()
 const global = useGlobalStore()
+const sessions = useSessionsStore()
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['update:open'])
@@ -297,6 +330,8 @@ function resolveProviderLabel(value) {
 const localDoctors = ref(JSON.parse(JSON.stringify(global.doctors)))
 // 当前问诊医生（含在席/淘汰状态与票数）
 const consultDoctors = ref(JSON.parse(JSON.stringify(store.doctors)))
+// 问诊名称
+const localConsultationName = ref(store.consultationName || '')
 
 const localSettings = ref(JSON.parse(JSON.stringify(store.settings)))
 const localImageRecognition = ref(JSON.parse(JSON.stringify(global.imageRecognition || {})))
@@ -316,6 +351,7 @@ watch(
     if (v) {
       localDoctors.value = JSON.parse(JSON.stringify(global.doctors))
       consultDoctors.value = JSON.parse(JSON.stringify(store.doctors))
+      localConsultationName.value = store.consultationName || ''
       localSettings.value = JSON.parse(JSON.stringify(store.settings))
       localImageRecognition.value = {
         maxConcurrent: 1,
@@ -669,8 +705,13 @@ function onSave() {
   global.setPresetPrompts(localPresetPrompts.value)
   global.setImageRecognition(localImageRecognition.value)
   // 保存当前问诊设置与所选医生
+  store.setConsultationName(localConsultationName.value)
   store.setSettings(localSettings.value)
   store.setDoctors(consultDoctors.value)
+  // 更新会话列表中的问诊名称
+  if (localConsultationName.value.trim() && sessions.currentId) {
+    sessions.rename(sessions.currentId, localConsultationName.value.trim())
+  }
   message.success('已保存设置')
   open.value = false
 }
