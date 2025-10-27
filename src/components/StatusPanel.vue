@@ -107,6 +107,12 @@
             由 {{ store.finalSummary.doctorName }} 生成
           </div>
         </div>
+        <a-alert
+          type="warning"
+          show-icon
+          message="【本内容仅供参考，身体不适尽早就医】"
+          style="margin-bottom: 12px;"
+        />
         <div class="case-brief">
           <div>患者姓名：{{ store.patientCase.name || "—" }}</div>
           <div>年龄：{{ store.patientCase.age ?? "—" }}</div>
