@@ -1,0 +1,55 @@
+name: Deploy static content to Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 安装 Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.11.0   # 你项目需要的 Node 版本
+          cache: npm
+
+      # 安装依赖
+      - name: Install dependencies
+        run: npm ci
+
+      # 构建
+      - name: Build
+        run: npm run build
+
+      # 配置 Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # 上传构建产物（假设 build 目录是 dist）
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      # 部署
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
