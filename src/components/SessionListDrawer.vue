@@ -13,8 +13,10 @@
 
 <script setup>
 import { ref, computed, h, watch } from 'vue'
-import { Button, Popconfirm, Tag, Tooltip } from 'ant-design-vue'
+import { Button, Popconfirm, Tag, Tooltip, message, Spin } from 'ant-design-vue'
 import { useSessionsStore } from '../store/sessions'
+import { useConsultStore } from '../store'
+import { exportSessionAsPDF, exportSessionAsImage } from '../utils/exportSession'
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['update:open'])
@@ -26,6 +28,8 @@ watch(
 watch(open, (v) => emit('update:open', v))
 
 const sessions = useSessionsStore()
+const consult = useConsultStore()
+const exportingId = ref(null)
 
 const rows = computed(() => {
   return sessions.sessions.map((s) => ({
@@ -67,6 +71,50 @@ function onExport(id) {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+async function onExportPDF(id) {
+  try {
+    exportingId.value = id
+    const sessionData = sessions.getSessionData(id)
+    const meta = sessions.sessions.find((s) => s.id === id)
+    
+    if (!sessionData) {
+      message.error('会诊数据不存在')
+      return
+    }
+    
+    const fileName = `${meta?.name || '会诊报告'}.pdf`
+    await exportSessionAsPDF(meta, sessionData, fileName)
+    message.success('PDF 导出成功')
+  } catch (error) {
+    console.error('Export PDF error:', error)
+    message.error('导出 PDF 失败：' + (error?.message || '未知错误'))
+  } finally {
+    exportingId.value = null
+  }
+}
+
+async function onExportImage(id) {
+  try {
+    exportingId.value = id
+    const sessionData = sessions.getSessionData(id)
+    const meta = sessions.sessions.find((s) => s.id === id)
+    
+    if (!sessionData) {
+      message.error('会诊数据不存在')
+      return
+    }
+    
+    const fileName = `${meta?.name || '会诊报告'}.png`
+    await exportSessionAsImage(meta, sessionData, fileName)
+    message.success('图片导出成功')
+  } catch (error) {
+    console.error('Export image error:', error)
+    message.error('导出图片失败：' + (error?.message || '未知错误'))
+  } finally {
+    exportingId.value = null
+  }
 }
 
 function onDeleteCurrent() {
@@ -129,32 +177,43 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    width: 350,
+    width: 520,
     customRender: ({ record }) => {
       const isCurrent = !!record.current
+      const isExporting = exportingId.value === record.id
       return h(
         'div',
         { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
         [
           h(
             Button,
-            { type: 'primary', ghost: isCurrent, size: 'small', onClick: () => onOpen(record.id) },
+            { type: 'primary', ghost: isCurrent, size: 'small', onClick: () => onOpen(record.id), disabled: isExporting },
             { default: () => '打开' }
           ),
           h(
             Button,
-            { size: 'small', onClick: () => onRename(record.id) },
+            { size: 'small', onClick: () => onRename(record.id), disabled: isExporting },
             { default: () => '重命名' }
           ),
           h(
             Button,
-            { type: 'dashed', size: 'small', onClick: () => onExport(record.id) },
+            { type: 'dashed', size: 'small', onClick: () => onExport(record.id), disabled: isExporting },
             { default: () => '导出 JSON' }
           ),
           h(
+            Button,
+            { size: 'small', onClick: () => onExportPDF(record.id), loading: isExporting, disabled: isExporting },
+            { default: () => '📄 导出 PDF' }
+          ),
+          h(
+            Button,
+            { size: 'small', onClick: () => onExportImage(record.id), loading: isExporting, disabled: isExporting },
+            { default: () => '🖼️ 导出图片' }
+          ),
+          h(
             Popconfirm,
-            { title: '确认删除该问诊？', onConfirm: () => onDelete(record.id) },
-            { default: () => h(Button, { danger: true, size: 'small' }, { default: () => '删除' }) }
+            { title: '确认删除该问诊？', onConfirm: () => onDelete(record.id), disabled: isExporting },
+            { default: () => h(Button, { danger: true, size: 'small', disabled: isExporting }, { default: () => '删除' }) }
           )
         ]
       )
