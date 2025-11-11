@@ -81,10 +81,12 @@
       </div>
     </template>
 
-    <div style="margin-top: 16px; display: flex; gap: 8px">
-      <a-button @click="$emit('open-settings')">问诊设置</a-button>
-      <a-popconfirm title="确认重置流程？" @confirm="resetAll">
-        <a-button danger>重置</a-button>
+    <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap">
+      <a-button @click="$emit('open-settings')" :disabled="isExportingSession">问诊设置</a-button>
+      <a-button @click="exportCurrentSessionAsPDF" :loading="isExportingSession" :disabled="isExportingSession">📄 导出 PDF</a-button>
+      <a-button @click="exportCurrentSessionAsImage" :loading="isExportingSession" :disabled="isExportingSession">🖼️ 导出图片</a-button>
+      <a-popconfirm title="确认重置流程？" @confirm="resetAll" :disabled="isExportingSession">
+        <a-button danger :disabled="isExportingSession">重置</a-button>
       </a-popconfirm>
     </div>
   </a-card>
@@ -138,15 +140,20 @@
 <script setup>
 import { computed, ref } from "vue";
 import { marked } from "marked";
+import { message } from "ant-design-vue";
 
 import { useConsultStore } from "../store";
+import { useSessionsStore } from "../store/sessions";
 import DoctorList from "./DoctorList.vue";
 import VoteTally from "./VoteTally.vue";
 import ExpandableText from "./ExpandableText.vue";
+import { exportSessionAsPDF, exportSessionAsImage } from "../utils/exportSession";
 
 const store = useConsultStore();
+const sessions = useSessionsStore();
 const summaryOpen = ref(false);
 const exportRef = ref(null);
+const isExportingSession = ref(false);
 
 const imageRecognitions = computed(() => store.patientCase?.imageRecognitions || []);
 const hasImageRecognitions = computed(() => (imageRecognitions.value && imageRecognitions.value.length > 0) || !!store.patientCase?.imageRecognitionResult);
@@ -197,6 +204,50 @@ async function exportSummaryImage() {
   } catch (e) {
     // ignore
     console.error(e);
+  }
+}
+
+async function exportCurrentSessionAsPDF() {
+  try {
+    isExportingSession.value = true
+    const sessionData = sessions.getSessionData(sessions.currentId)
+    const meta = sessions.current
+    
+    if (!sessionData) {
+      message.error('会诊数据不存在')
+      return
+    }
+    
+    const fileName = `${meta?.name || '会诊报告'}.pdf`
+    await exportSessionAsPDF(meta, sessionData, fileName)
+    message.success('PDF 导出成功')
+  } catch (error) {
+    console.error('Export PDF error:', error)
+    message.error('导出 PDF 失败：' + (error?.message || '未知错误'))
+  } finally {
+    isExportingSession.value = false
+  }
+}
+
+async function exportCurrentSessionAsImage() {
+  try {
+    isExportingSession.value = true
+    const sessionData = sessions.getSessionData(sessions.currentId)
+    const meta = sessions.current
+    
+    if (!sessionData) {
+      message.error('会诊数据不存在')
+      return
+    }
+    
+    const fileName = `${meta?.name || '会诊报告'}.png`
+    await exportSessionAsImage(meta, sessionData, fileName)
+    message.success('图片导出成功')
+  } catch (error) {
+    console.error('Export image error:', error)
+    message.error('导出图片失败：' + (error?.message || '未知错误'))
+  } finally {
+    isExportingSession.value = false
   }
 }
 

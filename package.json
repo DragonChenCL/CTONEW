@@ -12,6 +12,7 @@
     "ant-design-vue": "^4.2.1",
     "axios": "^1.6.7",
     "html-to-image": "^1.11.11",
+    "jspdf": "^2.5.1",
     "marked": "^9.1.6",
     "pinia": "^2.1.7",
     "vuedraggable": "^4.1.0",
