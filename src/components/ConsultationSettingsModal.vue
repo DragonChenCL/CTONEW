@@ -127,26 +127,47 @@ const providerOptionsMap = computed(() => {
 })
 
 const globalDoctorOptions = computed(() => {
-  const included = new Set((consultDoctors.value || []).map((d) => d.id))
-  return (global.doctors || [])
-    .filter((d) => !included.has(d.id))
-    .map((d) => ({ label: `${d.name}（${providerOptionsMap.value[d.provider] || d.provider}•${d.model}）`, value: d.id }))
-})
+   const included = new Set((consultDoctors.value || []).map((d) => d.id))
+   return (global.doctors || [])
+     .filter((d) => !included.has(d.id))
+     .map((d) => ({ label: `${d.name}（${providerOptionsMap.value[d.provider] || d.provider}•${d.model}）`, value: d.id }))
+ })
 
-function addToConsult() {
-  const targetId = selectedToAdd.value
-  if (!targetId) return
-  const d = (global.doctors || []).find((x) => x.id === targetId)
-  if (!d) return
-  consultDoctors.value.push({ ...d, status: 'active', votes: 0 })
-  selectedToAdd.value = null
-}
+ function isValidDoctor(doctor) {
+   return doctor && doctor.apiKey && doctor.apiKey.trim() && doctor.model && doctor.model.trim()
+ }
 
-function addAllToConsult() {
-  const included = new Set((consultDoctors.value || []).map((d) => d.id))
-  const toAdd = (global.doctors || []).filter((d) => !included.has(d.id))
-  consultDoctors.value = consultDoctors.value.concat(toAdd.map((d) => ({ ...d, status: 'active', votes: 0 })))
-}
+ function addToConsult() {
+   const targetId = selectedToAdd.value
+   if (!targetId) return
+   const d = (global.doctors || []).find((x) => x.id === targetId)
+   if (!d) return
+
+   if (!isValidDoctor(d)) {
+     message.error(`医生"${d.name}"未配置API Key或模型，请先去全局设置中配置。`)
+     return
+   }
+
+   consultDoctors.value.push({ ...d, status: 'active', votes: 0 })
+   selectedToAdd.value = null
+ }
+
+ function addAllToConsult() {
+   const included = new Set((consultDoctors.value || []).map((d) => d.id))
+   const toAdd = (global.doctors || []).filter((d) => !included.has(d.id))
+
+   const validDoctors = toAdd.filter((d) => isValidDoctor(d))
+   const invalidDoctors = toAdd.filter((d) => !isValidDoctor(d))
+
+   if (invalidDoctors.length > 0) {
+     const invalidNames = invalidDoctors.map((d) => d.name).join('、')
+     message.error(`以下医生未配置API Key或模型，无法添加：${invalidNames}。请先去全局设置中配置。`)
+   }
+
+   if (validDoctors.length > 0) {
+     consultDoctors.value = consultDoctors.value.concat(validDoctors.map((d) => ({ ...d, status: 'active', votes: 0 })))
+   }
+ }
 
 function clearConsultDoctors() {
   consultDoctors.value = []
