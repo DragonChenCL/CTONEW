@@ -172,22 +172,23 @@ export async function exportSessionAsPDF(sessionMeta, sessionData, fileName = 'c
     // Generate HTML content
     const html = generateExportHTML(sessionMeta, sessionData)
     
-    // Create temporary container
+    // Create temporary container - make it visible from the start
     const container = document.createElement('div')
     container.style.position = 'fixed'
-    container.style.left = '-9999px'
-    container.style.top = '-9999px'
+    container.style.left = '0'
+    container.style.top = '0'
     container.style.width = '900px'
     container.style.background = 'white'
-    container.style.visibility = 'hidden'
-    container.style.zIndex = '-9999'
+    container.style.zIndex = '9999'
+    container.style.overflow = 'hidden'
+    container.style.pointerEvents = 'none' // Prevent interaction
     document.body.appendChild(container)
     
     // Set HTML content directly (now returns simple div with inline styles)
     container.innerHTML = html
     
-    // Wait for rendering
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Wait for rendering to ensure content is fully rendered
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     try {
       // Convert to image
@@ -258,23 +259,24 @@ export async function exportSessionAsImage(sessionMeta, sessionData, fileName = 
     // Generate HTML content
     const html = generateExportHTML(sessionMeta, sessionData)
     
-    // Create temporary container
+    // Create temporary container - make it visible from the start
     const container = document.createElement('div')
     container.style.position = 'fixed'
-    container.style.left = '-9999px'
-    container.style.top = '-9999px'
+    container.style.left = '0'
+    container.style.top = '0'
     container.style.width = '900px'
     container.style.background = 'white'
-    container.style.visibility = 'hidden'
-    container.style.zIndex = '-9999'
+    container.style.zIndex = '9999'
+    container.style.overflow = 'hidden'
+    container.style.pointerEvents = 'none' // Prevent interaction
     document.body.appendChild(container)
     
     // Set HTML content directly (now returns simple div with inline styles)
     container.innerHTML = html
     
     try {
-      // Wait for rendering
-      await new Promise(resolve => setTimeout(resolve, 300))
+      // Wait for rendering to ensure content is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Convert to image
       const dataUrl = await toPng(container, {
