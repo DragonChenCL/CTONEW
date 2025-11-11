@@ -43,7 +43,7 @@ function formatDiscussionHistory(history) {
 }
 
 /**
- * Generate HTML content for export
+ * Generate HTML content for export - returns just the inner HTML without DOCTYPE
  */
 function generateExportHTML(sessionMeta, sessionData) {
   const patientCase = sessionData.patientCase || {}
@@ -58,235 +58,93 @@ function generateExportHTML(sessionMeta, sessionData) {
     if (item.type === 'system') {
       discussionHTML += `<div style="text-align: center; color: #8c8c8c; margin: 12px 0; font-size: 12px;">${escapeHTML(item.content)}</div>`
     } else if (item.type === 'doctor') {
-      const content = marked.parse(item.content || '')
-      discussionHTML += `
-        <div style="margin: 12px 0;">
-          <div style="font-weight: 600; color: #1677ff; margin-bottom: 4px;">医生: ${escapeHTML(item.doctorName)}</div>
-          <div style="background: #f0f5ff; padding: 10px; border-radius: 4px; border-left: 3px solid #1677ff;">
-            ${content}
-          </div>
+      const content = marked.parse(item.content || '').trim()
+      discussionHTML += `<div style="margin: 12px 0;">
+        <div style="font-weight: 600; color: #1677ff; margin-bottom: 4px;">医生: ${escapeHTML(item.doctorName)}</div>
+        <div style="background: #f0f5ff; padding: 10px; border-radius: 4px; border-left: 3px solid #1677ff; font-size: 13px;">
+          <div style="margin: 0; padding: 0;">${content}</div>
         </div>
-      `
+      </div>`
     } else if (item.type === 'patient') {
-      const content = marked.parse(item.content || '')
-      discussionHTML += `
-        <div style="margin: 12px 0;">
-          <div style="font-weight: 600; color: #13c2c2; margin-bottom: 4px;">患者: ${escapeHTML(item.author || 'Patient')}</div>
-          <div style="background: #e6f7ff; padding: 10px; border-radius: 4px; border-left: 3px solid #13c2c2;">
-            ${content}
-          </div>
+      const content = marked.parse(item.content || '').trim()
+      discussionHTML += `<div style="margin: 12px 0;">
+        <div style="font-weight: 600; color: #13c2c2; margin-bottom: 4px;">患者: ${escapeHTML(item.author || 'Patient')}</div>
+        <div style="background: #e6f7ff; padding: 10px; border-radius: 4px; border-left: 3px solid #13c2c2; font-size: 13px;">
+          <div style="margin: 0; padding: 0;">${content}</div>
         </div>
-      `
+      </div>`
     } else if (item.type === 'vote_detail') {
-      discussionHTML += `
-        <div style="background: #fff7e6; padding: 6px 10px; margin: 8px 0; border-radius: 4px; border-left: 3px solid #fa8c16; font-size: 12px;">
-          <span style="font-weight: 600;">${escapeHTML(item.voterName)}</span> 标注 <span style="font-weight: 600;">${escapeHTML(item.targetName)}</span> 为不太准确：${escapeHTML(item.reason || '')}
-        </div>
-      `
+      discussionHTML += `<div style="background: #fff7e6; padding: 6px 10px; margin: 8px 0; border-radius: 4px; border-left: 3px solid #fa8c16; font-size: 12px;">
+        <span style="font-weight: 600;">${escapeHTML(item.voterName)}</span> 标注 <span style="font-weight: 600;">${escapeHTML(item.targetName)}</span> 为不太准确：${escapeHTML(item.reason || '')}
+      </div>`
     } else if (item.type === 'vote_result') {
       discussionHTML += `<div style="text-align: center; color: #fa8c16; margin: 12px 0; font-size: 12px; font-weight: 600;">${escapeHTML(item.content)}</div>`
     }
   }
   
   // Format final summary
-  const summaryContent = marked.parse(finalSummary.content || '')
+  const summaryContent = marked.parse(finalSummary.content || '').trim()
   
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 医疗会诊报告</title>
-  <style>
-    * { margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-      line-height: 1.6;
-      color: #333;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 40px;
-      background: white;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 2px solid #1677ff;
-      padding-bottom: 20px;
-    }
-    .title {
-      font-size: 28px;
-      font-weight: 700;
-      color: #0958d9;
-      margin-bottom: 10px;
-    }
-    .subtitle {
-      color: #8c8c8c;
-      font-size: 12px;
-    }
-    .section {
-      margin-bottom: 30px;
-    }
-    .section-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1677ff;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #e6f4ff;
-    }
-    .patient-info {
-      background: #f5f5f5;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 12px;
-    }
-    .info-row {
-      display: flex;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-    .info-label {
-      font-weight: 600;
-      width: 100px;
-      color: #595959;
-      flex-shrink: 0;
-    }
-    .info-value {
-      flex: 1;
-      color: #262626;
-    }
-    .warning {
-      background: #fff1f0;
-      border: 1px solid #ffccc7;
-      color: #aa0605;
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-top: 12px;
-    }
-    .discussion-content {
-      font-size: 13px;
-      line-height: 1.8;
-    }
-    .discussion-content h1,
-    .discussion-content h2,
-    .discussion-content h3 {
-      margin: 12px 0 8px;
-      color: #1677ff;
-    }
-    .discussion-content p {
-      margin: 8px 0;
-    }
-    .discussion-content ul,
-    .discussion-content ol {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-    .final-summary {
-      background: #f0f5ff;
-      border: 1px solid #adc6ff;
-      padding: 16px;
-      border-radius: 4px;
-      margin-top: 12px;
-    }
-    .final-summary h1,
-    .final-summary h2,
-    .final-summary h3 {
-      margin: 12px 0 8px;
-      color: #0958d9;
-    }
-    .final-summary p {
-      margin: 8px 0;
-      line-height: 1.8;
-    }
-    .final-summary ul,
-    .final-summary ol {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid #f0f0f0;
-      text-align: center;
-      font-size: 11px;
-      color: #8c8c8c;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="title">🎯 AI 医疗会诊报告</div>
-      <div class="subtitle">生成时间：${timestamp}</div>
+  // Return just the content, styles will be applied separately
+  return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px; background: white;">
+    <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #1677ff; padding-bottom: 20px;">
+      <div style="font-size: 28px; font-weight: 700; color: #0958d9; margin-bottom: 10px;">🎯 AI 医疗会诊报告</div>
+      <div style="color: #8c8c8c; font-size: 12px;">生成时间：${timestamp}</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">👤 患者基本信息</div>
-      <div class="patient-info">
-        <div class="info-row">
-          <div class="info-label">患者姓名：</div>
-          <div class="info-value">${escapeHTML(patientCase.name || '—')}</div>
+    <div style="margin-bottom: 30px;">
+      <div style="font-size: 16px; font-weight: 700; color: #1677ff; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e6f4ff;">👤 患者基本信息</div>
+      <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+        <div style="display: flex; margin-bottom: 8px; font-size: 13px;">
+          <div style="font-weight: 600; width: 100px; color: #595959; flex-shrink: 0;">患者姓名：</div>
+          <div style="flex: 1; color: #262626;">${escapeHTML(patientCase.name || '—')}</div>
         </div>
-        <div class="info-row">
-          <div class="info-label">性别：</div>
-          <div class="info-value">${escapeHTML(patientCase.gender || '—')}</div>
+        <div style="display: flex; margin-bottom: 8px; font-size: 13px;">
+          <div style="font-weight: 600; width: 100px; color: #595959; flex-shrink: 0;">性别：</div>
+          <div style="flex: 1; color: #262626;">${escapeHTML(patientCase.gender || '—')}</div>
         </div>
-        <div class="info-row">
-          <div class="info-label">年龄：</div>
-          <div class="info-value">${patientCase.age ?? '—'}</div>
+        <div style="display: flex; margin-bottom: 8px; font-size: 13px;">
+          <div style="font-weight: 600; width: 100px; color: #595959; flex-shrink: 0;">年龄：</div>
+          <div style="flex: 1; color: #262626;">${patientCase.age ?? '—'}</div>
         </div>
-        ${patientCase.pastHistory ? `
-        <div class="info-row">
-          <div class="info-label">既往疾病：</div>
-          <div class="info-value">${escapeHTML(patientCase.pastHistory)}</div>
-        </div>
-        ` : ''}
-        ${patientCase.currentProblem ? `
-        <div class="info-row">
-          <div class="info-label">本次问题：</div>
-          <div class="info-value">${escapeHTML(patientCase.currentProblem)}</div>
-        </div>
-        ` : ''}
-        ${patientCase.imageRecognitionResult ? `
-        <div class="info-row">
-          <div class="info-label">图片识别：</div>
-          <div class="info-value">${escapeHTML(patientCase.imageRecognitionResult)}</div>
-        </div>
-        ` : ''}
+        ${patientCase.pastHistory ? `<div style="display: flex; margin-bottom: 8px; font-size: 13px;">
+          <div style="font-weight: 600; width: 100px; color: #595959; flex-shrink: 0;">既往疾病：</div>
+          <div style="flex: 1; color: #262626;">${escapeHTML(patientCase.pastHistory)}</div>
+        </div>` : ''}
+        ${patientCase.currentProblem ? `<div style="display: flex; margin-bottom: 8px; font-size: 13px;">
+          <div style="font-weight: 600; width: 100px; color: #595959; flex-shrink: 0;">本次问题：</div>
+          <div style="flex: 1; color: #262626;">${escapeHTML(patientCase.currentProblem)}</div>
+        </div>` : ''}
+        ${patientCase.imageRecognitionResult ? `<div style="display: flex; margin-bottom: 8px; font-size: 13px;">
+          <div style="font-weight: 600; width: 100px; color: #595959; flex-shrink: 0;">图片识别：</div>
+          <div style="flex: 1; color: #262626;">${escapeHTML(patientCase.imageRecognitionResult)}</div>
+        </div>` : ''}
       </div>
-      <div class="warning">
+      <div style="background: #fff1f0; border: 1px solid #ffccc7; color: #aa0605; padding: 12px; border-radius: 4px; font-size: 12px;">
         <strong>⚠️ 免责声明：</strong>本内容仅供参考，不能替代专业医疗意见。身体不适，请尽早就医。
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">💬 AI 讨论过程</div>
-      <div class="discussion-content">
-        ${discussionHTML}
+    <div style="margin-bottom: 30px;">
+      <div style="font-size: 16px; font-weight: 700; color: #1677ff; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e6f4ff;">💬 AI 讨论过程</div>
+      <div style="font-size: 13px; line-height: 1.8;">
+        ${discussionHTML || '<div style="color: #8c8c8c;">暂无讨论内容</div>'}
       </div>
     </div>
 
-    ${finalSummary.content ? `
-    <div class="section">
-      <div class="section-title">🎁 最终结果</div>
-      <div class="final-summary">
-        ${summaryContent}
+    ${finalSummary.content ? `<div style="margin-bottom: 30px;">
+      <div style="font-size: 16px; font-weight: 700; color: #1677ff; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e6f4ff;">🎁 最终结果</div>
+      <div style="background: #f0f5ff; border: 1px solid #adc6ff; padding: 16px; border-radius: 4px; margin-top: 12px; font-size: 13px;">
+        <div style="margin: 0; padding: 0;">
+          ${summaryContent}
+        </div>
       </div>
-    </div>
-    ` : ''}
+    </div>` : ''}
 
-    <div class="footer">
-      <p>© AI 医疗会诊面板 | 本内容仅供参考，身体不适尽早就医</p>
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #f0f0f0; text-align: center; font-size: 11px; color: #8c8c8c;">
+      <p style="margin: 0;">© AI 医疗会诊面板 | 本内容仅供参考，身体不适尽早就医</p>
     </div>
-  </div>
-</body>
-</html>
-  `.trim()
+  </div>`
 }
 
 /**
@@ -311,12 +169,11 @@ export function exportSessionAsHTML(sessionMeta, sessionData) {
  */
 export async function exportSessionAsPDF(sessionMeta, sessionData, fileName = 'consultation.pdf') {
   try {
-    // Generate HTML
+    // Generate HTML content
     const html = generateExportHTML(sessionMeta, sessionData)
     
     // Create temporary container
     const container = document.createElement('div')
-    container.innerHTML = html
     container.style.position = 'fixed'
     container.style.left = '-9999px'
     container.style.top = '-9999px'
@@ -326,8 +183,11 @@ export async function exportSessionAsPDF(sessionMeta, sessionData, fileName = 'c
     container.style.zIndex = '-9999'
     document.body.appendChild(container)
     
+    // Set HTML content directly (now returns simple div with inline styles)
+    container.innerHTML = html
+    
     // Wait for rendering
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise(resolve => setTimeout(resolve, 300))
     
     try {
       // Convert to image
@@ -371,8 +231,6 @@ export async function exportSessionAsPDF(sessionMeta, sessionData, fileName = 'c
           pdf.addPage()
         }
         
-        // Use html2canvas or similar to split content
-        // For now, add the full image and let PDF handle it
         pdf.addImage(dataUrl, 'PNG', margin, margin - yOffset, maxWidth, imgHeight)
         
         yOffset += maxHeight
@@ -397,12 +255,11 @@ export async function exportSessionAsPDF(sessionMeta, sessionData, fileName = 'c
  */
 export async function exportSessionAsImage(sessionMeta, sessionData, fileName = 'consultation.png') {
   try {
-    // Generate HTML
+    // Generate HTML content
     const html = generateExportHTML(sessionMeta, sessionData)
     
     // Create temporary container
     const container = document.createElement('div')
-    container.innerHTML = html
     container.style.position = 'fixed'
     container.style.left = '-9999px'
     container.style.top = '-9999px'
@@ -412,9 +269,12 @@ export async function exportSessionAsImage(sessionMeta, sessionData, fileName = 
     container.style.zIndex = '-9999'
     document.body.appendChild(container)
     
+    // Set HTML content directly (now returns simple div with inline styles)
+    container.innerHTML = html
+    
     try {
       // Wait for rendering
-      await new Promise(resolve => setTimeout(resolve, 200))
+      await new Promise(resolve => setTimeout(resolve, 300))
       
       // Convert to image
       const dataUrl = await toPng(container, {
